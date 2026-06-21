@@ -1,0 +1,69 @@
+<?php
+// api_pantalla.php
+header('Content-Type: application/json');
+
+// 1. Conexión a la base de datos (Ajusta tus credenciales)
+$host = 'db';
+$db   = 'gestion_colas';
+$user = 'root';
+$pass = 'root';
+#$charset = 'utf8mb4';
+
+$dsn = "mysql:host=$host;dbname=$db";#;charset=$charset";
+try {
+     $pdo = new PDO($dsn, $user, $pass, [
+         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+     ]);
+} catch (\PDOException $e) {
+     echo json_encode(['error' => 'Error de conexión: ' . $e->getMessage()]);
+     exit;
+}
+
+// Para este ejemplo, asumimos la asignatura ID = 1 (puedes dinamizarlo luego)
+$asignatura_id = 1;
+
+// 2. Obtener nombre de la asignatura
+$stmt = $pdo->prepare("SELECT nombre FROM asignaturas WHERE id = ?");
+$stmt->bindValue(1, $asignatura_id, PDO::PARAM_INT);
+$stmt->execute();
+$asignatura = $stmt->fetchColumn() ?: "Sin Asignatura";
+
+// 3. Turno actual (sirviendo)
+$stmt = $pdo->prepare("SELECT turno_numero FROM turnos WHERE asignatura_id = ? AND estado = 'atendiendo' LIMIT 1");
+$stmt->execute([$asignatura_id]);
+$sirviendo = $stmt->fetchColumn() ?: "--";
+
+// 4. Próximo turno (en espera, el primero de la cola según su posición)
+$stmt = $pdo->prepare("SELECT turno_numero FROM turnos WHERE asignatura_id = ? AND estado = 'esperando' ORDER BY posicion_cola ASC LIMIT 1");
+$stmt->execute([$asignatura_id]);
+$proximo = $stmt->fetchColumn() ?: "--";
+
+// 5. Calcular tiempo medio de espera hoy (en minutos)
+// Promedio de la diferencia entre cuando se registró y cuando empezó a ser atendido
+$stmt = $pdo->prepare("
+    SELECT AVG(TIMESTAMPDIFF(MINUTE, fecha_registro, hora_inicio_atencion)) as t_medio 
+    FROM turnos 
+    WHERE asignatura_id = ? 
+      AND estado IN ('atendido', 'atendiendo') 
+      AND DATE(fecha_registro) = CURDATE()
+");
+$stmt->execute([$asignatura_id]);
+$tiempo_medio_res = $stmt->fetch();
+$tiempo_medio = isset($tiempo_medio_res['t_medio']) ? round($tiempo_medio_res['t_medio']) . " min" : "0 min";
+
+// 6. Consultem si la cua està oberta o tancada
+$stmt_cua = $pdo->prepare("SELECT cola_abierta FROM asignaturas WHERE id = ?");
+$stmt_cua->execute([$asignatura_id]);
+$cola_abierta = $stmt_cua->fetchColumn();
+
+// 7. Enviar respuesta como JSON
+echo json_encode([
+    'asignatura' => $asignatura,
+    'sirviendo' => $sirviendo,
+    'proximo' => $proximo,
+    'tiempo_medio' => $tiempo_medio,
+    'success' => true,
+    'cola_abierta' => (int)$cola_abierta
+]);
+
