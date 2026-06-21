@@ -1,0 +1,46 @@
+ * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #111827; /* Fondo oscuro para que no moleste a los ojos en el proyector */
+            color: #f3f4f6;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 40px;
+            overflow: hidden;
+        }
+        header {
+            text-align: center;
+            border-bottom: 2px solid #374151;
+            padding-bottom: 20px;
+        }
+        h1 { font-size: 3rem; color: #3b82f6; text-transform: uppercase; }
+        
+        main {
+            display: flex;
+            flex: 1;
+            justify-content: space-around;
+            align-items: center;
+            gap: 20px;
+        }
+        .card {
+            background-color: #1f2937;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            flex: 1;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+        .card-title { font-size: 2rem; color: #9ca3af; margin-bottom: 20px; text-transform: uppercase;}
+        .card-value { font-size: 8rem; font-weight: bold; color: #10b981; }
+        
+        /* Resaltamos de forma diferente el próximo y el tiempo */
+        .next-card .card-value { color: #f59e0b; font-size: 6rem; }
+        .time-card .card-value { color: #6366f1; font-size: 4.5rem; }
+
+        footer {
+            text-align: center;
+            color: #4b5563;
+            font-size: 1.2rem;
+        }

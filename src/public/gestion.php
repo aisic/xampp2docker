@@ -7,7 +7,7 @@ require_once 'seguridad_profesor.php'; // Protegeix la vista HTML
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panell de Gestió - Professor</title>
-     <link href="css/gestion.css" rel="stylesheet">
+    <link href="css/gestion.css" rel="stylesheet">
 </head>
 <body>
 

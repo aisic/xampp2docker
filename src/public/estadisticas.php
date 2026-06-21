@@ -119,50 +119,7 @@ $incidencias = $pdo->query($sql_incidencias)->fetchAll();
 <head>
     <meta charset="UTF-8">
     <title>Mòdul d'Estadístiques i Seguretat</title>
-    <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; color: #1e293b; padding: 40px; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        h1 { color: #1e3a8a; font-size: 1.5rem; }
-        .back-btn { background: #475569; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.9rem; }
-        
-        /* Formulari de filtres */
-        .filter-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 25px; display: flex; gap: 15px; align-items: flex-end; }
-        .form-group { display: flex; flex-direction: column; flex: 1; }
-        .form-group label { font-size: 0.85rem; font-weight: bold; color: #64748b; margin-bottom: 5px; text-transform: uppercase; }
-        .form-group select, .form-group input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; color: #334155; }
-        .submit-btn { background: #2563eb; color: white; padding: 11px 25px; border: none; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; }
-        .submit-btn:hover { background: #1d4ed8; }
-
-        /* Reixeta de Kpis */
-        .grid-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
-        .kpi { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); text-align: center; border-top: 4px solid #3b82f6; }
-        .kpi-title { font-size: 0.8rem; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
-        .kpi-value { font-size: 1.8rem; font-weight: bold; color: #0f172a; }
-        
-        /* Secció de resultats de tests */
-        .test-box { display: flex; gap: 20px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 40px; align-items: center; }
-        .test-progress { flex: 1; background: #ef4444; height: 24px; border-radius: 6px; overflow: hidden; display: flex; color: white; font-size: 0.85rem; font-weight: bold; text-align: center; line-height: 24px; }
-        .progress-apte { background: #10b981; height: 100%; transition: width 0.3s; }
-
-        /* Taula d'incidències d'accés */
-        .incidencias-section { background: #fff5f5; border: 1px solid #fee2e2; padding: 25px; border-radius: 12px; }
-        .incidencias-title { color: #991b1b; font-size: 1.2rem; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
-        th, td { padding: 12px 15px; text-align: left; font-size: 0.95rem; }
-        th { background: #fee2e2; color: #991b1b; font-weight: bold; text-transform: uppercase; font-size: 0.8rem; }
-        tr { border-bottom: 1px solid #f1f5f9; }
-        tr:last-child { border-bottom: none; }
-	.text-empty { color: #64748b; text-align: center; padding: 20px; font-style: italic; }
-
-/* Estils per a la nova taula de dades basades */
-.detall-section { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 40px; }
-.detall-title { color: #334155; font-size: 1.2rem; margin-bottom: 15px; font-weight: bold; }
-.badge-result { padding: 4px 8px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; text-transform: uppercase; }
-.badge-apte { background: #d1fae5; color: #065f46; }
-.badge-no-apte { background: #fee2e2; color: #991b1b; }
-.badge-pendent { background: #f1f5f9; color: #475569; }
-    </style>
+    <link href="css/gestion.css" rel="stylesheet">
 </head>
 <body>
 

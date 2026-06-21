@@ -4,13 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accés Docent - Gestió de Cues</title>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #0f172a; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); text-align: center; max-width: 400px; width: 100%; }
-        h1 { color: #1e3a8a; font-size: 1.8rem; margin-bottom: 10px; }
-        p { color: #475569; margin-bottom: 30px; font-size: 0.95rem; }
-        .danger-msg { color: #b91c1c; background: #fee2e2; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 0.9rem; font-weight: bold; border: 1px solid #fca5a5; }
-    </style>
+    <link href="css/login.css" rel="stylesheet">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>

@@ -1,6 +1,11 @@
 <?php
 // api_gestion.php
 session_start();
+
+// Forcem a PHP a escriure els errors a la pantalla en lloc de callar-se
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 require_once 'seguridad_profesor.php'; // Si un alumne crida l'API per AJAX, també queda registrat i bloquejat
 header('Content-Type: application/json');
 
