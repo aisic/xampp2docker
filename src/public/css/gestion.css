@@ -353,3 +353,109 @@ tr:last-child {
     background: #f1f5f9; 
     color: #475569; 
 }
+/* --- Utilitats generals de visibilitat --- */
+.hidden {
+    display: none !important;
+}
+
+.text-muted {
+    color: #64748b;
+}
+
+/* --- Capçalera --- */
+.header-subtitle {
+    font-size: 0.9rem; 
+    color: #64748b;
+}
+
+.header-actions {
+    display: flex; 
+    gap: 10px;
+}
+
+.btn-logout {
+    background-color: #334155; 
+    color: white; 
+    border: 1px solid #475569;
+    transition: background-color 0.2s;
+}
+
+.btn-logout:hover {
+    background-color: #1e293b;
+}
+
+/* --- Acció principal --- */
+.main-action {
+    margin-bottom: 25px;
+}
+
+/* --- Targetes de control --- */
+.info-atendiendo {
+    color: #10b981;
+}
+
+.info-espera {
+    color: #f59e0b;
+}
+
+.student-name {
+    font-size: 1.2rem; 
+    font-weight: 500; 
+    color: #475569; 
+    margin-bottom: 15px;
+}
+
+/* --- Zona del temporitzador --- */
+.timer-zone {
+    margin-bottom: 20px;
+}
+
+.timer-text {
+    font-size: 0.9rem; 
+    color: #b91c1c; 
+    font-weight: bold;
+}
+
+.progress-container {
+    background: #e2e8f0; 
+    border-radius: 10px; 
+    height: 10px; 
+    width: 100%; 
+    overflow: hidden; 
+    margin-top: 5px;
+}
+
+.progress-bar {
+    background: #dc2626; 
+    height: 100%; 
+    width: 100%; 
+    transition: width 1s linear;
+}
+
+/* --- Zona d'avaluació --- */
+.evaluate-zone {
+    display: flex; 
+    gap: 10px; 
+    justify-content: center;
+}
+
+.btn-apte {
+    background-color: #059669; 
+    color: white; 
+    flex: 1;
+}
+
+.btn-no-apte {
+    background-color: #ea580c; 
+    color: white; 
+    flex: 1;
+}
+
+.list-title {
+    margin-bottom: 10px;
+}
+
+.empty-list-text {
+    color: #94a3b8; 
+    padding: 10px;
+}

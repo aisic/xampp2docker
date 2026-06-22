@@ -13,15 +13,29 @@ header('Content-Type: application/json');
 // p.ex. if ($_SESSION['alumno_email'] !== 'professor@centre.cat') { exit('No autoritzat'); }
 
 //$dsn = "mysql:host=$host;dbname=$db";#;charset=$charset";
-require_once __DIR__ . '/../config/db.php'; // Assegura't que aquest fitxer defineix $dsn, $user, $password
+require_once __DIR__ . '/config/db.php'; // Assegura't que aquest fitxer defineix $dsn, $user, $password
+
 
 try {
-    $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
-    $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+     $pdo = new PDO($dsn, $user, $password, [
+         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+     ]);
 } catch (\PDOException $e) {
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-    exit;
+     echo json_encode(['error' => 'Error de conexión: ' . $e->getMessage()]);
+     exit;
 }
+
+
+
+
+//try {
+//    $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
+//    $pdo = new PDO($dsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+//} catch (\PDOException $e) {
+//    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+//    exit;
+//}
 
 $asignatura_id = 1; // ID de l'assignatura per defecte
 $accio = $_GET['accio'] ?? '';
