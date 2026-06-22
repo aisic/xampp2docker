@@ -8,18 +8,10 @@ if (!isset($_SESSION['alumno_email'])) {
     exit;
 }
 
-// TODO: Requereix el teu fitxer de connexió PDO $pdo aquí.
-// Per la prova ràpida re-aprofito la teva connexió corregida:
-$host = 'db';
-$db   = 'gestion_colas';
-$user = 'root';
-$pass = 'root';
-#$charset = 'utf8mb4';
-
-$dsn = "mysql:host=$host;dbname=$db";#;charset=$charset";
+require_once __DIR__ . '/config/db.php'; // Assegura't que aquest fitxer defineix $dsn, $user, $password
 
 try {
-     $pdo = new PDO($dsn, $user, $pass, [
+     $pdo = new PDO($dsn, $user, $password, [
          PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
          PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
      ]);

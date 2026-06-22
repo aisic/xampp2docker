@@ -12,11 +12,8 @@ header('Content-Type: application/json');
 // NOTA: Per producció aquí hauries de validar si l'usuari és el professor
 // p.ex. if ($_SESSION['alumno_email'] !== 'professor@centre.cat') { exit('No autoritzat'); }
 
-$host = 'db';
-$port = '3306'; // El teu port de MariaDB
-$db   = 'gestion_colas';
-$user = 'root';
-$pass = 'root'; // La teva contrasenya
+//$dsn = "mysql:host=$host;dbname=$db";#;charset=$charset";
+require_once __DIR__ . '/../config/db.php'; // Assegura't que aquest fitxer defineix $dsn, $user, $password
 
 try {
     $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";

@@ -1,0 +1,5 @@
+# .htaccess - Bloquejar l'accés al fitxer .env des del navegador
+<Files .env>
+    Order allow,deny
+    Deny from all
+</Files>
