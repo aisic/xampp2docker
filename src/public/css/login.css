@@ -50,3 +50,10 @@ p {
     font-weight: bold;
     border: 1px solid #fca5a5;
 }
+/* Centrat efectiu del botó oficial de Google */
+.g_id_signin {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 25px; /* L'espaiat que vulguis respecte el missatge de dalt */
+}

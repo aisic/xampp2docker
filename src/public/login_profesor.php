@@ -20,7 +20,7 @@
     <?php endif; ?>
 
     <div id="g_id_onload"
-         data-client_id="EL_TEU_CLIENT_ID_DE_GOOGLE.apps.googleusercontent.com"
+         data-client_id="569428212376-8bnfus0c5tal7q4d45j9c9sl8t8064oj.apps.googleusercontent.com"
          data-callback="handleCredentialResponse"
          data-auto_prompt="false">
     </div>

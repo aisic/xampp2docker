@@ -10,7 +10,7 @@
 <body>
 
 <div class="login-card">
-    <h1>Gestió de Cues</h1>
+    <h1>Accés alumne</h1>
     <p>Identifica't amb el teu correu del centre per demanar el teu torn.</p>
     
     <div id="error" class="error-msg"></div>
@@ -20,14 +20,16 @@
          data-callback="handleCredentialResponse"
          data-auto_prompt="false">
     </div>
-    <div class="g_id_signin"
+    <div class="g_id_signin" data-type="standard" data-size="large" data-theme="filled_blue"></div>
+
+    <!--<div class="g_id_signin"
          data-type="standard"
          data-size="large"
          data-theme="outline"
          data-text="sign_in_with"
          data-shape="semibold"
-         data-logo_alignment="left">
-    </div>
+         data-logo_alignment="center">
+    </div>-->
 </div>
 
 <script>
