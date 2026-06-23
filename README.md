@@ -1,4 +1,5 @@
-# XAMPP Stack using Docker (Compose)
+# CuesAlAula. Aplicació per gestionar les validacions verbals a l'aula
+# A partir de "XAMPP Stack using Docker"
 
 You can use this stack to replace your XAMPP instances. It contains a very basic setup with:
 - PHP 8.2
@@ -40,6 +41,10 @@ To run the stack, do the following:
    $ docker compose up --build
    ```
 
+5. Enter the webserver
+   
+   http://localhost:3000/
+   
 To run in the background you can add the `-d` flag to the last command, like this:
 ```sh
 $ docker compose up -d --build
