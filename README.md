@@ -41,13 +41,9 @@ To run the stack, do the following:
    $ docker compose up --build
    ```
 
-5. Enter to the webserver
+5. Enter the webserver
    
-   5.1. Student: http://lcoalhost:3000/public/alumno.php
-   
-   5.2. Teacher: http://localhost:3000/public/gestion.php
-   
-   5.3. Projector: http://localhost:3000/public/index.php
+   http://localhost:3000/
    
 To run in the background you can add the `-d` flag to the last command, like this:
 ```sh
