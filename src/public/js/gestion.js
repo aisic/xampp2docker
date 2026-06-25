@@ -1,6 +1,9 @@
+// js/gestion.js
+
 let cuaObertaActual = true;
 let temporitzador;
 let tempsRestant = 20;
+let idDelTurnoActual = null; // 🟢 VARIABLE GLOBAL PER CONTROLAR EL TORN ACTUAL BLINDAT
 
 document.addEventListener("DOMContentLoaded", () => {
     console.log("Panell de gestió inicialitzat.");
@@ -12,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnSiguiente = document.getElementById('btn-siguiente');
     if (btnSiguiente) btnSiguiente.addEventListener("click", cridarSiguiente);
 
+    // 🟢 ADAPTACIÓ: Els botons ara llegeixen el formulari abans d'enviar les dades
     const btnApte = document.getElementById('btn-apte');
     if (btnApte) btnApte.addEventListener("click", () => avaluaAlumne('apte'));
 
@@ -20,8 +24,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const btnPresentat = document.getElementById('btn-presentat');
     if (btnPresentat) {
-    btnPresentat.addEventListener("click", alumneSHePresentat);
-}
+        btnPresentat.addEventListener("click", alumneSHePresentat);
+    }
+    
     // Càrrega inicial de dades i configuració del bucle de refresc (4 segons)
     carregarDadesPanell();
     setInterval(carregarDadesPanell, 4000);
@@ -45,17 +50,23 @@ async function carregarDadesPanell() {
         document.getElementById('nom-actual').textContent = dades.atendiendo.nombre_alumno;
         document.getElementById('total-espera').textContent = dades.en_espera;
 
-        // 2. Mostrar o amagar zona d'avaluació de test de manera modular
+        // 🟢 DESEM L'ID DEL TORN ACTUAL PER UTILITZAR-LO EN L'AVALUACIÓ SECURE
+        idDelTurnoActual = dades.atendiendo.id ?? null;
+
+        // 2. Mostrar o amagar seccions de manera modular segons si hi ha algú a la taula
         const zonaAvalua = document.getElementById('zona-avalua');
         const zonaTemps = document.getElementById('zona-temps');
         
         if (numActual !== '--') {
-            zonaAvalua.classList.remove('hidden');
+            // Si el temporitzador està actiu, no forcem encara la visibilitat de la zona d'avaluació
+            if (zonaTemps.classList.contains('hidden')) {
+                zonaAvalua.classList.remove('hidden');
+            }
         } else {
             zonaAvalua.classList.add('hidden');
             if (!zonaTemps.classList.contains('hidden')) {
                 aturarTemporitzador();
-                }
+            }
         }
 
         // 3. Actualitzar botó de bloqueig/obertura de cua
@@ -65,7 +76,7 @@ async function carregarDadesPanell() {
         if (btnLock) {
             if (cuaObertaActual) {
                 btnLock.textContent = "🔒 Tancar Cua Alumnes";
-                btnLock.style.backgroundColor = "#dc2626"; // Mantenim el canvi d'estat de color dinàmic
+                btnLock.style.backgroundColor = "#dc2626";
             } else {
                 btnLock.textContent = "🔓 Obrir Cua Alumnes";
                 btnLock.style.backgroundColor = "#16a34a";
@@ -74,20 +85,22 @@ async function carregarDadesPanell() {
 
         // 4. Actualitzar la llista visual de la cua
         const contenidorLlista = document.getElementById('llista-alumnes');
-        contenidorLlista.innerHTML = "";
+        if (contenidorLlista) {
+            contenidorLlista.innerHTML = "";
 
-        if (dades.cua_llista.length === 0) {
-            contenidorLlista.innerHTML = "<p class='empty-list-text'>No hi ha ningú esperant ara mateix.</p>";
-        } else {
-            dades.cua_llista.forEach((alumne, index) => {
-                const item = document.createElement('div');
-                item.className = 'list-item';
-                item.innerHTML = `
-                    <span><strong>${index + 1}.</strong> ${alumne.nombre_alumno}</span>
-                    <span class="badge">Torn ${alumne.turno_numero}</span>
-                `;
-                contenidorLlista.appendChild(item);
-            });
+            if (dades.cua_llista.length === 0) {
+                contenidorLlista.innerHTML = "<p class='empty-list-text'>No hi ha ningú esperant ara mateix.</p>";
+            } else {
+                dades.cua_llista.forEach((alumne, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    item.innerHTML = `
+                        <span><strong>${index + 1}.</strong> ${alumne.nombre_alumno}</span>
+                        <span class="badge">Torn ${alumne.turno_numero}</span>
+                    `;
+                    contenidorLlista.appendChild(item);
+                });
+            }
         }
 
     } catch (error) {
@@ -116,6 +129,10 @@ async function cridarSiguiente() {
 
         if (resultat.success) {
             if (resultat.quedaven_alumnes) {
+                // 🟢 NETEJEM ELS CAMPS DELS TEXTAREAS PER AL NOU ALUMNE QUE VE
+                if (document.getElementById('eval-pregunta')) document.getElementById('eval-pregunta').value = '';
+                if (document.getElementById('eval-respuesta')) document.getElementById('eval-respuesta').value = '';
+                
                 iniciarTemporitzador(); 
             } else {
                 alert("La cua està buida. No hi ha més alumnes per atendre!");
@@ -133,7 +150,10 @@ function iniciarTemporitzador() {
     tempsRestant = 20;
     
     const zonaTemps = document.getElementById('zona-temps');
-    zonaTemps.classList.remove('hidden');
+    if (zonaTemps) zonaTemps.classList.remove('hidden');
+    
+    const zonaAvalua = document.getElementById('zona-avalua');
+    if (zonaAvalua) zonaAvalua.classList.add('hidden'); // Amaguem avaluació mentre corre el cronòmetre
     
     document.getElementById('comptador-enrere').textContent = tempsRestant;
     document.getElementById('barra-progres').style.width = '100%';
@@ -157,27 +177,51 @@ function aturarTemporitzador() {
     if (zonaTemps) zonaTemps.classList.add('hidden');
 }
 
+// 🟢 FUNCIÓ D'AVALUACIÓ ADAPTADA AMB EXTRECCIÓ DE PREGUNTA I RESPOSTA
 async function avaluaAlumne(resultatTest) {
+    if (!idDelTurnoActual) {
+        alert("No hi ha cap alumne actiu per avaluar.");
+        return;
+    }
+
+    // Extreiem els elements de text de manera segura
+    const preguntaCamp = document.getElementById('eval-pregunta');
+    const respuestaCamp = document.getElementById('eval-respuesta');
+    
+    const preguntaText = preguntaCamp ? preguntaCamp.value : '';
+    const respuestaText = respuestaCamp ? respuestaCamp.value : '';
+
     try {
         aturarTemporitzador(); 
 
-        const resposta = await fetch('api_gestion.php?accio=marcar_resultat', {
+        // Modificat l'endpoint cap a l'acció centralitzada 'finalitzar'
+        const resposta = await fetch('api_gestion.php?accio=finalitzar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ resultat: resultatTest })
+            body: JSON.stringify({ 
+                id: idDelTurnoActual,
+                resultado: resultatTest,
+                pregunta: preguntaText,
+                respuesta: respuestaText
+            })
         });
 
         const dades = await resposta.json();
         if (dades.success) {
-            alert(`Alumne desat com a: ${resultatTest.toUpperCase()}`);
+            // Netegem completament les caixes de text
+            if (preguntaCamp) preguntaCamp.value = '';
+            if (respuestaCamp) respuestaCamp.value = '';
+
+            alert(`Alumne desat correctament com a: ${resultatTest.toUpperCase()}`);
             carregarDadesPanell();
+        } else {
+            alert("Error del servidor: " + dades.error);
         }
     } catch (error) {
         console.error("Error a l'avaluar l'alumne:", error);
     }
 }
 
-// Afegeix aquesta funció a js/gestion.js
 function alumneSHePresentat() {
     console.log("L'alumne ha arribat a temps. Aturant compte enrere.");
     
@@ -192,6 +236,9 @@ function alumneSHePresentat() {
     const zonaAvalua = document.getElementById('zona-avalua');
     if (zonaAvalua) zonaAvalua.classList.remove('hidden');
     
-    // Opcional: Podem avisar l'usuari amb un petit canvi visual o log
-    document.getElementById('text-estat-torn').innerHTML = "🟢 <span style='color:#16a34a;'>Alumne present a la taula</span>";
+    // El teu element opcional (si no existeix evitem que falli l'script)
+    const txtEstat = document.getElementById('text-estat-torn');
+    if (txtEstat) {
+        txtEstat.innerHTML = "🟢 <span style='color:#16a34a;'>Alumne present a la taula</span>";
+    }
 }

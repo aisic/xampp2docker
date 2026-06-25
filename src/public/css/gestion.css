@@ -459,3 +459,78 @@ tr:last-child {
     color: #94a3b8; 
     padding: 10px;
 }
+
+/* El contenidor principal de la zona d'avaluació */
+.evaluate-zone {
+    display: block !important; /* Força la ruptura del flex general de la card */
+    width: 100% !important;
+    clear: both;
+    margin-top: 20px;
+}
+
+/* El grup que conté els camps de text de dalt */
+.evaluation-form-group {
+    display: block !important;
+    width: 100%;
+    text-align: left;
+}
+
+.form-field {
+    display: block !important;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.form-field label {
+    display: block !important;
+    font-weight: bold;
+    font-size: 0.85rem;
+    color: #1e293b;
+    margin-bottom: 6px;
+}
+
+/* Forcem que les caixes ocupin el 100% horitzontal */
+.form-field textarea {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background-color: #f8fafc;
+    font-family: inherit;
+    box-sizing: border-box; /* Evita que el padding surti de la pantalla */
+    resize: vertical;
+}
+
+/* --- ELS BOTONS A BAIX DE TOT --- */
+.evaluation-buttons-group {
+    display: flex !important; /* Només apliquem flex aquí per posar un botó al costat de l'altre */
+    flex-direction: row !important;
+    gap: 12px;
+    width: 100%;
+    margin-top: 20px;
+}
+
+/* Reajustem els botons perquè tornin a ser horitzontals i no gegants */
+.evaluation-buttons-group .btn {
+    flex: 1 !important;
+    padding: 12px 20px !important; /* Alçada normal i correcta per als botons */
+    font-size: 0.95rem !important;
+    font-weight: bold !important;
+    color: white !important;
+    border-radius: 8px !important;
+    border: none !important;
+    cursor: pointer;
+    min-height: auto !important; /* Elimina estils heredats que els facin alts */
+}
+
+/* Colors definitius per evitar interferències */
+.evaluation-buttons-group .btn-apte {
+    background-color: #059669 !important; /* Verd professional */
+}
+
+.evaluation-buttons-group .btn-no-apte {
+    background-color: #dc2626 !important; /* Vermell professional */
+}

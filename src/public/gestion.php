@@ -60,11 +60,34 @@ require_once 'seguridad_profesor.php'; // Protegeix la vista HTML
                 </div>
             </div>
 
-            <div id="zona-avalua" class="evaluate-zone hidden">
-                <button id="btn-apte" class="btn btn-apte">✅ APTE</button>
-                <button id="btn-no-apte" class="btn btn-no-apte">❌ NO APTE</button>
-            </div>
-        </div>
+ <div id="zona-avalua" class="evaluate-zone hidden" style="display: block !important; width: 100% !important; clear: both !important; float: none !important; margin-top: 25px !important;">
+    
+    <div style="display: block !important; width: 100% !important; margin-bottom: 15px !important; text-align: left !important;">
+        <label for="eval-pregunta" style="display: block !important; font-weight: bold !important; font-size: 0.85rem !important; margin-bottom: 6px !important; color: #1e293b !important;">
+            📋 PREGUNTA REALITZADA:
+        </label>
+        <textarea id="eval-pregunta" rows="3" placeholder="Introduce aquí la pregunta conceptual o l'exercici..." 
+                  style="display: block !important; width: 100% !important; min-width: 100% !important; max-width: 100% !important; padding: 12px !important; border: 1px solid #cbd5e1 !important; border-radius: 6px !important; background-color: #f8fafc !important; font-family: inherit !important; box-sizing: border-box !important; resize: vertical !important;"></textarea>
+    </div>
+
+    <div style="display: block !important; width: 100% !important; margin-bottom: 20px !important; text-align: left !important;">
+        <label for="eval-respuesta" style="display: block !important; font-weight: bold !important; font-size: 0.85rem !important; margin-bottom: 6px !important; color: #1e293b !important;">
+            💬 RESPOSTA DE L'ALUMNE:
+        </label>
+        <textarea id="eval-respuesta" rows="3" placeholder="Afegeix els detalls de la resposta de l'alumne o anotacions..." 
+                  style="display: block !important; width: 100% !important; min-width: 100% !important; max-width: 100% !important; padding: 12px !important; border: 1px solid #cbd5e1 !important; border-radius: 6px !important; background-color: #f8fafc !important; font-family: inherit !important; box-sizing: border-box !important; resize: vertical !important;"></textarea>
+    </div>
+
+    <div style="display: flex !important; flex-direction: row !important; gap: 15px !important; width: 100% !important; margin-top: 20px !important; clear: both !important;">
+        <button id="btn-apte" class="btn btn-apte" style="flex: 1 !important; padding: 14px !important; font-size: 0.95rem !important; font-weight: bold !important; color: white !important; background-color: #059669 !important; border-radius: 8px !important; border: none !important; cursor: pointer !important; min-height: auto !important; height: auto !important;">
+            ✅ APTE
+        </button>
+        <button id="btn-no-apte" class="btn btn-no-apte" style="flex: 1 !important; padding: 14px !important; font-size: 0.95rem !important; font-weight: bold !important; color: white !important; background-color: #dc2626 !important; border-radius: 8px !important; border: none !important; cursor: pointer !important; min-height: auto !important; height: auto !important;">
+            ❌ NO APTE
+        </button>
+    </div>
+
+</div>
 
         <div class="card">
             <div class="card-title">Alumnes en espera</div>
