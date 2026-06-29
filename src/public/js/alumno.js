@@ -1,6 +1,37 @@
 // js/alumno.js
 let jaNotificat = false;
 
+window.I18n = {
+    translations: {},
+    translate: function(key) {
+        return this.translations[key] || key;
+    }
+};
+
+// Funció asíncrona per descarregar les traduccions des de la carpeta lang/
+async function inicialitzarIdioma() {
+    try {
+        // 1. Demanem a l'API l'idioma que té guardat PHP a la sessió actual
+        const respostaEstat = await fetch('api_alumno.php?accio=estat');
+        const dadesEstat = await respostaEstat.json();
+        
+        // Suposem que api_alumno.php ens torna una clau 'lang' (ex: 'ca', 'es', 'en').
+        // Si no la troba, forcem 'ca' per defecte.
+        const idiomaSessio = dadesEstat.lang || 'ca'; 
+        
+        // 2. Anem a buscar el fitxer JSON correcte a la carpeta lang/
+        const respostaLang = await fetch(`lang/${idiomaSessio}.json`);
+        
+        // 3. Guardem les traduccions a l'objecte global
+        window.I18n.translations = await respostaLang.json();
+        
+    } catch (error) {
+        console.error("No s'han pogut carregar les traduccions, utilitzant sistema d'emergència:", error);
+        // Fallback en cas d'error de xarxa perquè l'app no es congeli
+        window.I18n.translations = { "minutes": "min", "your_turn_is": "Torn:" };
+    }
+}
+
 // Demanar permís per a les notificacions només entrar
 if (Notification.permission === "default") {
     Notification.requestPermission();
@@ -22,13 +53,15 @@ async function comprovarEstatCua() {
             
             document.getElementById('el-meu-torn').textContent = dades.el_meu_torn;
             document.getElementById('alumnes-davant').textContent = dades.alumnes_davant;
-            document.getElementById('temps-estimat').textContent = dades.temps_estimat + " min";
+            // Traducció dinàmica del sufix "min"
+            document.getElementById('temps-estimat').textContent = dades.temps_estimat + " " + window.I18n.translate('minutes');
 
             if (dades.estat_actual === 'atendiendo') {
-                document.getElementById('text-estat-torn').innerHTML = "<span style='color:#15803d; font-weight:bold;'>¡ÉS EL TEU TORN! Passa al lloc del professor</span>";
+                // Text en cas que sigui el torn de l'alumne
+                document.getElementById('text-estat-torn').innerHTML = `<span style='color:#15803d; font-weight:bold;'>${window.I18n.translate('its_your_turn')}</span>`;
                 llencarNotificacio();
             } else {
-                document.getElementById('text-estat-torn').textContent = "El teu número de torn és:";
+                document.getElementById('text-estat-torn').textContent = window.I18n.translate('your_turn_is');
                 jaNotificat = false; 
             }
         } else {
@@ -37,30 +70,30 @@ async function comprovarEstatCua() {
             jaNotificat = false;
         }
 
-        // 2. CONTROL UNIFICAT DE L'ESTAT DE LA CUA (Sense duplicats)
+        // 2. CONTROL UNIFICAT DE L'ESTAT DE LA CUA (Amb traduccions aplicades)
         if (contenidorEstat && textEstat) {
             if (dades.cola_abierta == 1) {
-                textEstat.textContent = "🟢 LA CUA ESTÀ OBERTA (Pots demanar torn)";
+                textEstat.textContent = window.I18n.translate('queue_is_open');
                 contenidorEstat.style.backgroundColor = "#e6f4ea";
                 contenidorEstat.style.color = "#137333";
 
                 if (botoApuntar) {
                     botoApuntar.removeAttribute('disabled');
                     botoApuntar.disabled = false;
-                    botoApuntar.textContent = "Apuntar-me a la Cua"; 
+                    botoApuntar.textContent = window.I18n.translate('btn_join'); 
                     botoApuntar.style.opacity = "1";
                     botoApuntar.style.cursor = "pointer";
                     botoApuntar.style.pointerEvents = "auto";
                 }
             } else {
-                textEstat.textContent = "🔴 LA CUA ESTÀ TANCADA PEL PROFESSOR";
+                textEstat.textContent = window.I18n.translate('queue_is_closed');
                 contenidorEstat.style.backgroundColor = "#fce8e6";
                 contenidorEstat.style.color = "#c5221f";
 
                 if (botoApuntar) {
                     botoApuntar.setAttribute('disabled', 'true');
                     botoApuntar.disabled = true;
-                    botoApuntar.textContent = "🔒 Cua tancada temporalment";
+                    botoApuntar.textContent = window.I18n.translate('queue_closed_temporarily');
                     botoApuntar.style.opacity = "0.5";
                     botoApuntar.style.cursor = "not-allowed";
                     botoApuntar.style.pointerEvents = "none";
@@ -73,7 +106,7 @@ async function comprovarEstatCua() {
     }
 }
 
-// 🟢 FUNCIÓ SECURE: Gestiona l'acció controlant els errors de JSON retornats pel PHP
+// 🟢 FUNCIÓ SECURE: Gestiona l'acció actuant en l'idioma seleccionat
 async function accionarCua(accio) {
     try {
         const resposta = await fetch(`api_alumno.php?accio=${accio}`, { method: 'POST' });
@@ -86,7 +119,7 @@ async function accionarCua(accio) {
             dades = JSON.parse(textResposta);
         } catch (e) {
             console.error("El servidor ha retornat un format no JSON:", textResposta);
-            alert("Error crític del servidor: La resposta no és un JSON vàlid.");
+            alert(window.I18n.translate('invalid_json_error'));
             return;
         }
 
@@ -94,14 +127,16 @@ async function accionarCua(accio) {
             // Si la base de dades s'ha guardat correctament, actualitzem la vista de seguida
             await comprovarEstatCua(); 
         } else {
-            alert("Atenció: " + (dades.error || "No s'ha pogut processar la petició."));
+            // Mostrem l'error directament traduït si prové del PHP, o l'afegim al prefix d'atenció
+            alert(window.I18n.translate('warning_prefix') + (dades.error || "No s'ha pogut processar la petició."));
         }
     } catch (error) {
         console.error("Error de xarxa en processar acció:", error);
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => { 
+document.addEventListener("DOMContentLoaded", async () => { 
+
     const btnApuntar = document.getElementById("apuntarse-btn");
     if (btnApuntar) {
         btnApuntar.addEventListener("click", async () => {
@@ -118,18 +153,19 @@ document.addEventListener("DOMContentLoaded", () => {
             await accionarCua("desapuntarse");
         });
     }
+    // Inicialització del Polling actiu
+    await inicialitzarIdioma(); // Assegurem que les traduccions estan carregades abans de continuar
+    await comprovarEstatCua();
+    setInterval(comprovarEstatCua, 3000);
 });
 
 function llencarNotificacio() {
     if (!jaNotificat && Notification.permission === "granted") {
-        new Notification("¡És el teu torn!", {
-            body: "El professor et crida per a la revisió.",
+        new Notification(window.I18n.translate('its_your_turn'), {
+            body: window.I18n.translate('notification_body'),
             icon: "https://cdn-icons-png.flaticon.com/512/179/179133.png"
         });
         jaNotificat = true;
     }
 }
 
-// Inicialització del Polling actiu
-comprovarEstatCua();
-setInterval(comprovarEstatCua, 3000);

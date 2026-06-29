@@ -49,7 +49,7 @@ async function carregarDadesPanell() {
         document.getElementById('num-actual').textContent = numActual;
         document.getElementById('nom-actual').textContent = dades.atendiendo.nombre_alumno;
         document.getElementById('total-espera').textContent = dades.en_espera;
-
+        document.getElementById('nom-asignatura').textContent = `${dades.nom_modul}`;
         // 🟢 DESEM L'ID DEL TORN ACTUAL PER UTILITZAR-LO EN L'AVALUACIÓ SECURE
         idDelTurnoActual = dades.atendiendo.id ?? null;
 

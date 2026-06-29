@@ -1,0 +1,23 @@
+{
+  "logout": "🚪 Sortir",
+  "connected_as": "Connectat com:",
+  "not_in_queue": "Actualment no estàs a la cua d'espera d'aquesta assignatura.",
+  "btn_join": "Apuntar-me a la Cua",
+  "your_turn_is": "El teu número de torn és:",
+  "queue_status": "Status de la cua:",
+  "checking_status": "🔄 Comprovant estat de la cua...",
+  "students_ahead": "Alumnes a la cua:",
+  "estimated_time": "Temps estimat d'espera:",
+  "minutes": "min",
+  "btn_leave": "Sortir de la Cua",
+  "error_server": "Error crític del servidor.",
+  "queue_closed": "La cua està tancada pel professor",
+  "already_in_queue": "Ja estàs a la cua",
+  "its_your_turn": "¡ÉS EL TEU TORN! Passa al lloc del professor",
+  "queue_is_open": "🟢 LA CUA ESTÀ OBERTA (Pots demanar torn)",
+  "queue_is_closed": "🔴 LA CUA ESTÀ TANCADA PEL PROFESSOR",
+  "queue_closed_temporarily": "🔒 Cua tancada temporalment",
+  "notification_body": "El professor et crida per a la revisió.",
+  "invalid_json_error": "Error crític del servidor: La resposta no és un JSON vàlid.",
+  "warning_prefix": "Atenció: "
+}

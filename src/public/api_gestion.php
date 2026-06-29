@@ -22,34 +22,42 @@ try {
      exit;
 }
 
-$asignatura_id = 1; // ID de l'assignatura per defecte
+$id_activitat = 1; // ID de l'assignatura per defecte
 $accio = $_GET['accio'] ?? '';
 
-// --- ACCIÓ 1: OBTENIR ESTAT ACTUAL DEL PANNELL ---
+// --- ACCIÓ 1: OBTENIR ESTAT ACTUAL DEL PANELL ---
 if ($accio === 'estat') {
-    // 1. Estat de la cua (Oberta/Tancada)
-    $stmt = $pdo->prepare("SELECT CodiModul_RA, cola_abierta FROM RAs WHERE id = ?");
-    $stmt->execute([$asignatura_id]);
+   // 1. Estat de la cua combinat amb el nom del mòdul via INNER JOIN
+    $stmt = $pdo->prepare("
+        SELECT 
+            r.CodiModul_RA, 
+            r.cola_abierta, 
+            m.nom_modul 
+        FROM RAs r
+        INNER JOIN moduls m ON r.id = m.id_modul
+        WHERE r.id = ?
+    ");
+    $stmt->execute([$id_activitat]);
     $asignatura = $stmt->fetch();
-
     // 2. Alumne actualment sota atenció (🟢 RETORNA TAMBÉ L'ID DEL TORN PEL JS)
-    $stmt = $pdo->prepare("SELECT id, turno_numero, nombre_alumno FROM turnos WHERE asignatura_id = ? AND estado = 'atendiendo' LIMIT 1");
-    $stmt->execute([$asignatura_id]);
+    $stmt = $pdo->prepare("SELECT id, turno_numero, nombre_alumno FROM turnos WHERE id_activitat = ? AND estado = 'atendiendo' LIMIT 1");
+    $stmt->execute([$id_activitat]);
     $atendiendo = $stmt->fetch() ?: ['id' => null, 'turno_numero' => '--', 'nombre_alumno' => 'Ningú'];
 
     // 3. Quants alumnes queden esperant a la cua
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM turnos WHERE asignatura_id = ? AND estado = 'esperando'");
-    $stmt->execute([$asignatura_id]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM turnos WHERE id_activitat = ? AND estado = 'esperando'");
+    $stmt->execute([$id_activitat]);
     $en_espera = $stmt->fetchColumn();
 
     // 4. Llista de la cua actual
-    $stmt = $pdo->prepare("SELECT id, turno_numero, nombre_alumno FROM turnos WHERE asignatura_id = ? AND estado = 'esperando' ORDER BY posicion_cola ASC");
-    $stmt->execute([$asignatura_id]);
+    $stmt = $pdo->prepare("SELECT id, turno_numero, nombre_alumno FROM turnos WHERE id_activitat = ? AND estado = 'esperando' ORDER BY posicion_cola ASC");
+    $stmt->execute([$id_activitat]);
     $cua_llista = $stmt->fetchAll();
 
     echo json_encode([
         'success' => true,
         'asignatura' => $asignatura['CodiModul_RA'],
+        'nom_modul' => $asignatura['nom_modul'],
         'cola_abierta' => $asignatura['cola_abierta'],
         'atendiendo' => $atendiendo,
         'en_espera' => $en_espera,
@@ -63,7 +71,7 @@ if ($accio === 'toggle_cua' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $nou_estat = $input['estat'] ? 1 : 0;
 
     $stmt = $pdo->prepare("UPDATE RAs SET cola_abierta = ? WHERE id = ?");
-    $stmt->execute([$nou_estat, $asignatura_id]);
+    $stmt->execute([$nou_estat, $id_activitat]);
     echo json_encode(['success' => true]);
 }
 
@@ -73,13 +81,13 @@ if ($accio === 'siguiente' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("
         UPDATE turnos 
         SET estado = 'finalizado', resultat_prova = 'no_apte', hora_fin_atencion = NOW(), posicion_cola = 0 
-        WHERE asignatura_id = ? AND estado = 'atendiendo'
+        WHERE id_activitat = ? AND estado = 'atendiendo'
     ");
-    $stmt->execute([$asignatura_id]);
+    $stmt->execute([$id_activitat]);
 
     // Cridem al següent de la cua
-    $stmt = $pdo->prepare("SELECT id FROM turnos WHERE asignatura_id = ? AND estado = 'esperando' ORDER BY posicion_cola ASC LIMIT 1");
-    $stmt->execute([$asignatura_id]);
+    $stmt = $pdo->prepare("SELECT id FROM turnos WHERE id_activitat = ? AND estado = 'esperando' ORDER BY posicion_cola ASC LIMIT 1");
+    $stmt->execute([$id_activitat]);
     $proxim_id = $stmt->fetchColumn();
 
     if ($proxim_id) {
@@ -92,7 +100,7 @@ if ($accio === 'siguiente' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// --- 🟢 NOVA ACCIÓ 4: FINALITZAR I DESAR EXAMEN COMPLET (SUBSTITUEIX MARCAR_RESULTAT) ---
+// --- ACCIÓ 4: FINALITZAR I DESAR EXAMEN COMPLET (SUBSTITUEIX MARCAR_RESULTAT) ---
 if ($accio === 'finalitzar' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
     
@@ -123,9 +131,9 @@ if ($accio === 'finalitzar' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 respuesta = ?, 
                 hora_fin_atencion = NOW(),
                 posicion_cola = 0
-            WHERE id = ? AND asignatura_id = ?
+            WHERE id = ? AND id_activitat = ?
         ");
-        $stmt->execute([$resultado, $pregunta, $respuesta, $turno_id, $asignatura_id]);
+        $stmt->execute([$resultado, $pregunta, $respuesta, $turno_id, $id_activitat]);
 
         echo json_encode(['success' => true]);
         exit;

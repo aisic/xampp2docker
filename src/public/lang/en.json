@@ -1,0 +1,23 @@
+{
+  "logout": "🚪 Logout",
+  "connected_as": "Connected as:",
+  "not_in_queue": "You are currently not in the waiting queue for this subject.",
+  "btn_join": "Join the Queue",
+  "your_turn_is": "Your turn number is:",
+  "queue_status": "Queue status:",
+  "checking_status": "🔄 Checking queue status...",
+  "students_ahead": "Students in queue:",
+  "estimated_time": "Estimated waiting time:",
+  "minutes": "min",
+  "btn_leave": "Leave the Queue",
+  "error_server": "Critical server error.",
+  "queue_closed": "The queue is closed by the teacher",
+  "already_in_queue": "You are already in the queue",
+  "its_your_turn": "¡IT'S YOUR TURN! Please go to the teacher's desk",
+  "queue_is_open": "🟢 THE QUEUE IS OPEN (You can request a turn)",
+  "queue_is_closed": "🔴 THE QUEUE IS CLOSED BY THE TEACHER",
+  "queue_closed_temporarily": "🔒 Queue closed temporarily",
+  "notification_body": "The teacher is calling you for review.",
+  "invalid_json_error": "Critical server error: The response is not a valid JSON.",
+  "warning_prefix": "Warning: "
+}

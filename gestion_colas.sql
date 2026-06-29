@@ -58,7 +58,7 @@ CREATE TABLE `incidencias_acceso` (
 
 CREATE TABLE `turnos` (
   `id` int(11) NOT NULL,
-  `asignatura_id` int(11) DEFAULT NULL,
+  `id_activitat` int(11) DEFAULT NULL,
   `nombre_alumno` varchar(100) NOT NULL,
   `codigo_alumno` varchar(50) NOT NULL,
   `email_alumno` varchar(150) NOT NULL,
@@ -92,7 +92,7 @@ ALTER TABLE `incidencias_acceso`
 --
 ALTER TABLE `turnos`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `asignatura_id` (`asignatura_id`);
+  ADD KEY `id_activitat` (`id_activitat`);
 
 --
 -- AUTO_INCREMENT de las tablas volcadas
@@ -124,7 +124,7 @@ ALTER TABLE `turnos`
 -- Filtros para la tabla `turnos`
 --
 ALTER TABLE `turnos`
-  ADD CONSTRAINT `turnos_ibfk_1` FOREIGN KEY (`asignatura_id`) REFERENCES `RAs` (`id`);
+  ADD CONSTRAINT `turnos_ibfk_1` FOREIGN KEY (`id_activitat`) REFERENCES `RAs` (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

@@ -1,0 +1,23 @@
+{
+  "logout": "🚪 Salir",
+  "connected_as": "Conectado como:",
+  "not_in_queue": "Actualmente no estás en la cola de espera de esta asignatura.",
+  "btn_join": "Apuntarme a la Cola",
+  "your_turn_is": "Tu número de turno es:",
+  "queue_status": "Estado de la cola:",
+  "checking_status": "🔄 Comprobando estado de la cola...",
+  "students_ahead": "Alumnos apuntados a la cola:",
+  "estimated_time": "Tiempo estimado de espera:",
+  "minutes": "min",
+  "btn_leave": "Salir de la Cola",
+  "error_server": "Error crítico del servidor.",
+  "queue_closed": "La cola está cerrada por el profesor",
+  "already_in_queue": "Ya estás en la cola",
+  "its_your_turn": "¡ES TU TURNO! Pasa a la mesa del profesor",
+  "queue_is_open": "🟢 LA COLA ESTÁ ABIERTA (Puedes pedir turno)",
+  "queue_is_closed": "🔴 LA COLA ESTÁ CERRADA POR EL PROFESOR",
+  "queue_closed_temporarily": "🔒 Cola cerrada temporalmente",
+  "notification_body": "El profesor te llama para la revisión.",
+  "invalid_json_error": "Error crítico del servidor: La respuesta no es un JSON válido.",
+  "warning_prefix": "Atención: "
+}
