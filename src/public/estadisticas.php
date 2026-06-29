@@ -14,8 +14,13 @@ try {
     die("Error de connexió a la BD: " . $e->getMessage());
 }
 
-// 2. OBTENIR LLISTA D'ALUMNES UNIQUES PER AL DESPLEGABLE DEL FILTRE
-$stmt_alumnos = $pdo->query("SELECT DISTINCT email_alumno, nombre_alumno FROM turnos ORDER BY nombre_alumno ASC");
+// 2. 🟢 CORREGIT: OBTENIR LLISTA D'ALUMNES FENT JOIN AMB LA TAULA ALUMNES
+$stmt_alumnos = $pdo->query("
+    SELECT DISTINCT a.email as email_alumno, CONCAT(a.nom_alumne, ' ', a.cognoms_alumne) as nombre_alumno 
+    FROM turnos t
+    INNER JOIN alumnes a ON t.id_alumne = a.id_alumne
+    ORDER BY nombre_alumno ASC
+");
 $alumnos = $stmt_alumnos->fetchAll();
 
 // 3. RECOLLIR REQUISITS DELS FILTRES (SI S'HAN SELECCIONAT)
@@ -37,15 +42,15 @@ $stats = [
 if ($filtro_alumno || $filtro_fecha) {
     
     // Construïm la consulta dinàmica segons els filtres aplicats
-    $where_clauses = ["estado = 'atendido'"];
+    $where_clauses = ["t.estado = 'atendido'"];
     $params = [];
     
     if ($filtro_alumno) {
-        $where_clauses[] = "email_alumno = ?";
+        $where_clauses[] = "a.email = ?";
         $params[] = $filtro_alumno;
     }
     if ($filtro_fecha) {
-        $where_clauses[] = "DATE(fecha_registro) = ?";
+        $where_clauses[] = "DATE(t.fecha_registro) = ?";
         $params[] = $filtro_fecha;
     }
     
@@ -54,51 +59,47 @@ if ($filtro_alumno || $filtro_fecha) {
     // SQL complexa utilitzant funcions de temps (TIMESTAMPDIFF en segons)
     $sql = "SELECT 
                 COUNT(*) as total_ates,
-                AVG(TIMESTAMPDIFF(SECOND, fecha_registro, hora_inicio_atencion)) as espera_mitjana,
-                AVG(TIMESTAMPDIFF(SECOND, hora_inicio_atencion, hora_fin_atencion)) as atencio_mitjana,
-                SUM(CASE WHEN resultat_prova = 'apte' THEN 1 ELSE 0 END) as total_aptes,
-                SUM(CASE WHEN resultat_prova = 'no_apte' THEN 1 ELSE 0 END) as total_no_aptes
-            FROM turnos 
+                AVG(TIMESTAMPDIFF(SECOND, t.fecha_registro, t.hora_inicio_atencion)) as espera_mitjana,
+                AVG(TIMESTAMPDIFF(SECOND, t.hora_inicio_atencion, t.hora_fin_atencion)) as atencio_mitjana,
+                SUM(CASE WHEN t.resultat_prova = 'apte' THEN 1 ELSE 0 END) as total_aptes,
+                SUM(CASE WHEN t.resultat_prova = 'no_apte' THEN 1 ELSE 0 END) as total_no_aptes
+            FROM turnos t
+            INNER JOIN alumnes a ON t.id_alumne = a.id_alumne
             WHERE $where_str";
             
     $stmt_calc = $pdo->prepare($sql);
     $stmt_calc->execute($params);
     $res = $stmt_calc->fetch();
 
-$tornis_detall = [];
-if ($res && $res['total_ates'] > 0) {
-    // (Mantenir els càlculs de $stats que ja tenies de la resposta anterior)
-    
-    // 🔍 NOVA CONSULTA: Obtenir el llistat individual d'aquests torns
-    $sql_detall = "SELECT 
-                    turno_numero, 
-                    estado, 
-                    resultat_prova,
-                    fecha_registro,
-                    TIMESTAMPDIFF(SECOND, fecha_registro, hora_inicio_atencion) as segons_espera,
-                    TIMESTAMPDIFF(SECOND, hora_inicio_atencion, hora_fin_atencion) as segons_atencio
-                   FROM turnos 
-                   WHERE $where_str 
-                   ORDER BY fecha_registro DESC";
-                   
-    $stmt_detall = $pdo->prepare($sql_detall);
-    $stmt_detall->execute($params);
-    $tornis_detall = $stmt_detall->fetchAll();
-}
-
+    $tornis_detall = [];
     if ($res && $res['total_ates'] > 0) {
-	$stats['vegades_ates'] = $res['total_ates'];
-	$total_avaluats = $res['total_aptes'] + $res['total_no_aptes'];
+        // 🔍 NOVA CONSULTA: Obtenir el llistat individual d'aquests torns
+        $sql_detall = "SELECT 
+                        t.turno_numero, 
+                        t.estado, 
+                        t.resultat_prova,
+                        t.fecha_registro,
+                        TIMESTAMPDIFF(SECOND, t.fecha_registro, t.hora_inicio_atencion) as segons_espera,
+                        TIMESTAMPDIFF(SECOND, t.hora_inicio_atencion, t.hora_fin_atencion) as segons_atencio
+                       FROM turnos t
+                       INNER JOIN alumnes a ON t.id_alumne = a.id_alumne
+                       WHERE $where_str 
+                       ORDER BY t.fecha_registro DESC";
+                       
+        $stmt_detall = $pdo->prepare($sql_detall);
+        $stmt_detall->execute($params);
+        $tornis_detall = $stmt_detall->fetchAll();
+
+        $stats['vegades_ates'] = $res['total_ates'];
+        $total_avaluats = $res['total_aptes'] + $res['total_no_aptes'];
+        
         // Passem els segons mitjans a minuts arrodonits a 1 decimal
         $stats['temps_espera_mig'] = round(($res['espera_mitjana'] ?? 0) / 60, 1);
         $stats['temps_atencion_mig'] = round(($res['atencio_mitjana'] ?? 0) / 60, 1);
         $stats['aptes'] = $res['total_aptes'];
         $stats['no_aptes'] = $res['total_no_aptes'];
         
-        // Càlcul de percentatges matemàtics
-        // $stats['pct_apte'] = round(($stats['aptes'] / $stats['vegades_ates']) * 100, 1);
-	// $stats['pct_no_apte'] = round(($stats['no_aptes'] / $stats['vegades_ates']) * 100, 1);
-	if ($total_avaluats > 0) {
+        if ($total_avaluats > 0) {
             $stats['pct_apte'] = round(($stats['aptes'] / $total_avaluats) * 100, 1);
             $stats['pct_no_apte'] = round(($stats['no_aptes'] / $total_avaluats) * 100, 1);
         } else {
@@ -177,73 +178,76 @@ $incidencias = $pdo->query($sql_incidencias)->fetchAll();
             </div>
         </div>
 
-        <div class="test-box">
+        <div class="test-box" style="display: flex; align-items: center; background: white; padding: 20px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
             <div style="flex: 0 0 220px;">
-                <h3 style="font-size:1rem; color:#334155;">Resultat dels Tests</h3>
-                <p style="font-size:0.85rem; color:#64748b;">Distribució de les avaluacions fetes.</p>
+                <h3 style="font-size:1rem; color:#334155; margin: 0 0 5px 0;">Resultat dels Tests</h3>
+                <p style="font-size:0.85rem; color:#64748b; margin: 0;">Distribució de les avaluacions fetes.</p>
             </div>
-            <div class="test-progress">
-                <div class="progress-apte" style="width: <?= $stats['pct_apte'] ?>%;">
+            <div class="test-progress" style="flex-grow: 1; display: flex; height: 24px; background: #e2e8f0; border-radius: 6px; overflow: hidden; align-items: center; font-size: 0.8rem; font-weight: bold; color: white;">
+                <div class="progress-apte" style="width: <?= $stats['pct_apte'] ?>%; background: #10b981; height: 100%; display: flex; align-items: center; padding-left: 10px;">
                     <?php if($stats['aptes'] > 0): ?> APTE (<?= $stats['pct_apte'] ?>%) <?php endif; ?>
                 </div>
                 <?php if($stats['no_aptes'] > 0): ?> 
-                    <span style="margin-left: auto; padding-right: 15px;">NO APTE (<?= $stats['pct_no_apte'] ?>%)</span> 
+                    <div class="progress-no-apte" style="width: <?= $stats['pct_no_apte'] ?>%; background: #ef4444; height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; margin-left: auto;">
+                        NO APTE (<?= $stats['pct_no_apte'] ?>%)
+                    </div>
                 <?php endif; ?>
-	    </div>
+            </div>
+        </div>
 
+        <div class="detall-section" style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 40px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div>
+                    <h2 class="detall-title" style="font-size: 1.25rem; color: #1e293b; margin: 0;">📋 Registre de Torns Detallat</h2>
+                    <p style="font-size: 0.85rem; color: #64748b; margin: 5px 0 0 0;">
+                        Aquests són els torns individuals utilitzats per generar els indicadors superiors:
+                    </p>
+                </div>
+                <?php if (count($tornis_detall) > 0): ?>
+                    <button onclick="descarregarCSV()" style="background-color: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 5px;">
+                        📥 Descarregar CSV
+                    </button>
+                <?php endif; ?>
+            </div>
 
-</div>
-
-        <div class="detall-section">
-            <h2 class="detall-title">📋 Registre de Torns Detallat</h2>
-            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 15px;">
-                Aquests són els torns individuals utilitzats per generar els indicadors superiors:
-            </p>
-<?php if (count($tornis_detall) > 0): ?>
-            <button onclick="descarregarCSV()" style="background-color: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 5px;">
-                📥 Descarregar CSV
-            </button>
-        <?php endif; ?>
-            <table id="taula-detall" style="width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0;">
+            <table id="taula-detall" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
                 <thead>
-                    <tr style="background: #f8fafc; color: #475569;">
-                        <th>Torn</th>
-                        <th>Data i Hora Sol·licitud</th>
-                        <th>Temps Espera</th>
-                        <th>Temps Atenció</th>
-                        <th>Estat Final</th>
-                        <th>Resultat Test</th>
+                    <tr style="background: #f8fafc; color: #475569; border-bottom: 2px solid #e2e8f0; text-align: left;">
+                        <th style="padding: 12px;">Torn</th>
+                        <th style="padding: 12px;">Data i Hora Sol·licitud</th>
+                        <th style="padding: 12px;">Temps Espera</th>
+                        <th style="padding: 12px;">Temps Atenció</th>
+                        <th style="padding: 12px;">Estat Final</th>
+                        <th style="padding: 12px;">Resultat Test</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (count($tornis_detall) === 0): ?>
                         <tr>
-                            <td colspan="6" class="text-empty">No s'han trobat torns registrats per aquests filtres.</td>
+                            <td colspan="6" style="padding: 20px; text-align: center; color: #64748b;">No s'han trobat torns registrats per aquests filtres.</td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($tornis_detall as $torn): 
-                            // Convertim els segons calculats a minuts/segons llegibles
                             $min_espera = $torn['segons_espera'] ? round($torn['segons_espera'] / 60, 1) . " min" : "--";
                             $min_atencio = $torn['segons_atencio'] ? round($torn['segons_atencio'] / 60, 1) . " min" : "--";
                             
-                            // Color del resultat
-                            $classe_resultat = 'badge-pendent';
-                            if ($torn['resultat_prova'] === 'apte') $classe_resultat = 'badge-apte';
-                            if ($torn['resultat_prova'] === 'no_apte') $classe_resultat = 'badge-no-apte';
+                            $classe_resultat = 'color: #64748b; font-weight: bold;';
+                            if ($torn['resultat_prova'] === 'apte') $classe_resultat = 'color: #10b981; font-weight: bold;';
+                            if ($torn['resultat_prova'] === 'no_apte') $classe_resultat = 'color: #ef4444; font-weight: bold;';
                         ?>
-                            <tr>
-                                <td style="font-weight: bold; color: #2563eb;">#<?= $torn['turno_numero'] ?></td>
-                                <td style="color: #475569;"><?= date('d/m/Y H:i:s', strtotime($torn['fecha_registro'])) ?></td>
-                                <td><?= $min_espera ?></td>
-                                <td><?= $min_atencio ?></td>
-                                <td>
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 12px; font-weight: bold; color: #2563eb;">#<?= $torn['turno_numero'] ?></td>
+                                <td style="padding: 12px; color: #475569;"><?= date('d/m/Y H:i:s', strtotime($torn['fecha_registro'])) ?></td>
+                                <td style="padding: 12px;"><?= $min_espera ?></td>
+                                <td style="padding: 12px;"><?= $min_atencio ?></td>
+                                <td style="padding: 12px;">
                                     <span style="font-size: 0.9rem; font-weight: 500; color: <?= $torn['estado'] === 'atendido' ? '#10b981' : '#dc2626' ?>;">
-                                        <?= $torn['estado'] === 'atendido' ? 'Atès' : 'Cancel·lat (No presentat)' ?>
+                                        <?= $torn['estado'] === 'atendido' ? 'Atès' : 'Cancel·lat' ?>
                                     </span>
                                 </td>
-                                <td>
-                                    <span class="badge-result <?= $classe_resultat ?>">
-                                        <?= $torn['resultat_prova'] ?>
+                                <td style="padding: 12px; text-transform: uppercase;">
+                                    <span style="<?= $classe_resultat ?>">
+                                        <?= htmlspecialchars($torn['resultat_prova'] ?: 'Pendent') ?>
                                     </span>
                                 </td>
                             </tr>
@@ -252,93 +256,14 @@ $incidencias = $pdo->query($sql_incidencias)->fetchAll();
                 </tbody>
             </table>
         </div>
-
-        </div>
     <?php endif; ?>
 
-    <div class="incidencias-section">
-        <h2 class="incidencias-title">🚨 Registre d'Incidències: Intents d'Accés No Autoritzat</h2>
-        <p style="font-size:0.85rem; color:#991b1b; margin-bottom: 15px;">
+    <div class="incidencias-section" style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+        <h2 class="incidencias-title" style="font-size: 1.25rem; color: #991b1b; margin: 0 0 5px 0;">🚨 Registre d'Incidències: Intents d'Accés No Autoritzat</h2>
+        <p style="font-size:0.85rem; color:#64748b; margin-bottom: 15px;">
             Alumnes detectats intentant forçar l'entrada a la pantalla de gestió del professor (`gestion.php`):
         </p>
         
-        <table>
+        <table style="width: 100%; border-collapse: collapse;">
             <thead>
-                <tr>
-                    <th>Nom de l'Alumne</th>
-                    <th>Correu Electrònic</th>
-                    <th>Data i Hora Exacta</th>
-                    <th>Adreça IP d'Origen</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (count($incidencias) === 0): ?>
-                    <tr>
-                        <td colspan="4" class="text-empty">Excellent. No s'ha registrat cap incidència de seguretat fins ara.</td>
-                    </tr>
-                <?php else: ?>
-                    <?php foreach ($incidencias as $inc): ?>
-                        <tr style="background-color: #fffbfa;">
-                            <td style="font-weight: bold; color: #b91c1c;"><?= htmlspecialchars($inc['nombre_infractor']) ?></td>
-                            <td><code><?= htmlspecialchars($inc['email_infractor']) ?></code></td>
-                            <td style="color: #475569;"><?= date('d/m/Y H:i:s', strtotime($inc['fecha_incidencia'])) ?></td>
-                            <td style="font-size: 0.85rem; color: #64748b;"><?= htmlspecialchars($inc['ip_origen']) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-</body>
-<script>
-function descarregarCSV() {
-    const taula = document.getElementById('taula-detall');
-    if (!taula) return;
-
-    let filesCSV = [];
-    const files = taula.querySelectorAll('tr');
-
-    files.forEach(fila => {
-        const cel_les = fila.querySelectorAll('th, td');
-        let filaText = [];
-
-        cel_les.forEach(cel_la => {
-            // Netegem el text d'espais en blanc, salts de línia i eliminem caràcters estranys
-            let text = cel_la.innerText.trim().replace(/\n/g, " ");
-
-            // Si el text conté punt i coma, el posem entre cometes perquè no trenqui el CSV
-            if (text.includes(';')) {
-                text = `"${text}"`;
-            }
-            filaText.push(text);
-        });
-
-        // Unim les cel·les d'aquesta fila amb un punt i coma (estàndard d'Excel en català/espanyol)
-        filesCSV.push(filaText.join(';'));
-    });
-
-    // Unim totes les files amb un salt de línia i afegim el codi BOM per als accents en Excel
-    const contingutCSV = "\uFEFF" + filesCSV.join('\n');
-
-    // Creem el fitxer virtual en memòria
-    const blob = new Blob([contingutCSV], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-
-    // Generem un nom de fitxer dinàmic amb la data d'avui
-    const dataAvui = new Date().toISOString().slice(0, 10);
-    const nomFitxer = `estadisticas_cues_${dataAvui}.csv`;
-
-    // Creem un enllaç invisible, el cliquem per iniciar la descàrrega i el destruïm
-    const enllac = document.createElement("a");
-    enllac.setAttribute("href", url);
-    enllac.setAttribute("download", nomFitxer);
-    enllac.style.visibility = 'hidden';
-    document.body.appendChild(enllac);
-    enllac.click();
-    document.body.removeChild(enllac);
-}
-</script>
-</html>
-
+                <tr style="background: #fff5f5; color: #991b1b; border-bottom: 2px
