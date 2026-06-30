@@ -3,10 +3,10 @@ services:
     image: mariadb:11.3.2-jammy
     restart: unless-stopped
     environment:
-      MARIADB_ROOT_PASSWORD: root
-      MARIADB_DATABASE: root_db
-      MARIADB_USER: user
-      MARIADB_PASSWORD: user
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
       TZ: Europe/Bratislava
     ports:
       - "3306:3306"
@@ -21,9 +21,9 @@ services:
     depends_on:
       - db
     environment:
-      PMA_USER: root
-      PMA_PASSWORD: root
-      MYSQL_ROOT_PASSWORD: root
+      PMA_USER: ${PMA_USER}
+      PMA_PASSWORD: ${PMA_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     ports:
       - "8080:80"
     expose:

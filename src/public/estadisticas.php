@@ -2,14 +2,23 @@
 // 1. 🔐 BLINDATGE DE SEGURETAT: Només el professor pot carregar aquesta pàgina
 require_once 'seguridad_profesor.php';
 
-$host = 'db';
-$db   = 'gestion_colas';
-$user = 'root';
-$pass = 'root'; // La teva contrasenya de MariaDB
+// 3. Connectem a la base de dades de manera segura
+require_once __DIR__ . '/config/db.php';
 
 try {
-    $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
-    $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+    $pdo_seguridad = new PDO($dsn, $user, $password, [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false, // Seguretat extra contra SQLi
+    ]);
+} catch (\PDOException $e) {
+    echo json_encode(['error' => 'Error de connexió de seguretat']);
+    exit;
+}
+
+try {
+    $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
+    $pdo = new PDO($dsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
 } catch (\PDOException $e) {
     die("Error de connexió a la BD: " . $e->getMessage());
 }

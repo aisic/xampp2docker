@@ -2,17 +2,7 @@
 // api_pantalla.php
 header('Content-Type: application/json');
 
-// 1. Conexión a la base de datos (Ajusta tus credenciales)
-//$host = 'db';
-//$db   = 'gestion_colas';
-//$user = 'root';
-//$password = 'root';
-//$charset = 'utf8mb4';
-
-//$dsn = "mysql:host=$host;dbname=$db";#;charset=$charset";
-
 require_once __DIR__ . '/config/db.php'; // Assegura't que aquest fitxer defineix $dsn, $user, $password
-
 
 try {
      $pdo = new PDO($dsn, $user, $password, [
