@@ -21,3 +21,30 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f8fafc
 .act-table th { background: #f8fafc; font-weight: 600; }
 .badge-proporcio { background-color: #eff6ff; color: #1d4ed8; padding: 4px 10px; border-radius: 9999px; font-weight: bold; font-size: 0.85rem; }
 .text-center { text-align: center !important; }
+/* Dins de css/activitats.css */
+.btn-info {
+    background-color: #0284c7;
+    color: white;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+}
+.badge-comptador-checks {
+    background-color: #f1f5f9;
+    color: #475569;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid #e2e8f0;
+}
+.hidden {
+    display: none !important;
+}
+.zona-accions {
+    display: flex;
+    gap: 5px;
+}
+#taula-activitats-body tr.fila-activa {
+    background-color: #eff6ff !important; /* Blau molt claret */
+    border-left: 4px solid #2563eb;
+}

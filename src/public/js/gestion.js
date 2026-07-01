@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Càrrega inicial de dades i configuració del bucle de refresc (4 segons)
     carregarDadesPanell();
+    carregarLlistaActivitatsEval(); // 🟢 Afegir aquesta línia aquí
     setInterval(carregarDadesPanell, 4000);
 });
 
@@ -241,4 +242,183 @@ function alumneSHePresentat() {
     if (txtEstat) {
         txtEstat.innerHTML = "🟢 <span style='color:#16a34a;'>Alumne present a la taula</span>";
     }
+}
+
+// 1. Carrega les activitats del mòdul quan el panell s'actualitza
+async function carregarLlistaActivitatsEval(id_modulo) {
+    const selector = document.getElementById("eval-activitat");
+    if (!selector || selector.options.length > 1) return; // Evitem sobreescriure si ja té opcions
+
+    const res = await fetch(`api_gestion.php?accio=obtenir_activitats_eval`);
+    const dades = await res.json();
+    if(dades.success) {
+        let html = '<option value="">-- Tria l\'Activitat --</option>';
+        dades.activitats.forEach(act => {
+            html += `<option value="${act.id_activitat_conceptual}">${act.nom_activitat} (${act.CodiModul_RA})</option>`;
+        });
+        selector.innerHTML = html;
+    }
+}
+
+// 2. Es crida quan el professor canvia el selector d'activitat
+async function carregarChecksDeLActivitat(id_activitat) {
+    const contenidor = document.getElementById("contenidor-checks-dinamics");
+    if(!id_activitat) {
+        contenidor.innerHTML = "<p style='color:#64748b; font-size:0.9rem; text-align:center;'>Selecciona una activitat per avaluar els seus criteris.</p>";
+        return;
+    }
+
+    const res = await fetch(`api_gestion.php?accio=obtenir_checks&id_act=${id_activitat}`);
+    const dades = await res.json();
+    if(dades.success) {
+        if(dades.checks.length === 0) {
+            contenidor.innerHTML = "<p style='color:#dc2626; font-size:0.9rem; text-align:center; font-weight:bold;'>⚠️ Aquesta activitat no té cap check definit. Es desarà directament amb un 10.</p>";
+            return;
+        }
+
+        contenidor.innerHTML = "";
+        dades.checks.forEach(chk => {
+            const div = document.createElement("div");
+            div.style.padding = "10px 0";
+            div.style.borderBottom = "1px solid #e2e8f0";
+            div.style.display = "flex";
+            div.style.alignItems = "center";
+            div.innerHTML = `
+                <input type="checkbox" class="check-evaluacio-alum" value="${chk.id_check}" style="width:20px; height:20px; margin-right:15px; cursor:pointer;">
+                <label style="cursor:pointer; font-weight:500; color:#334155;">${chk.titol_check}</label>
+            `;
+            contenidor.appendChild(div);
+        });
+    }
+}
+
+// 3. Substitut del botó d'avaluar antic. Recull checkboxes i envia a guardar amb degradació
+async function finalitzarAval_Checks() {
+    if (!idDelTurnoActual) { alert("No hi ha cap alumne actiu."); return; }
+    
+    const id_activitat = document.getElementById("eval-activitat").value;
+    if(!id_activitat) { alert("Has d'escollir quina activitat estàs avaluant."); return; }
+
+    // Recopilem quins checks han estat marcats com a passats
+    const checkboxes = document.querySelectorAll(".check-evaluacio-alum");
+    let llistaChecksResultats = [];
+    
+    checkboxes.forEach(cb => {
+        llistaChecksResultats.push({
+            id_check: cb.value,
+            completat: cb.checked ? 1 : 0
+        });
+    });
+
+    const dadesEnv = {
+        id_turno: idDelTurnoActual,
+        id_activitat: id_activitat,
+        pregunta: document.getElementById('eval-pregunta').value,
+        respuesta: document.getElementById('eval-respuesta').value,
+        checks: llistaChecksResultats
+    };
+
+    try {
+        aturarTemporitzador();
+        const res = await fetch('api_gestion.php?accio=finalitzar_amb_checks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dadesEnv)
+        });
+        
+        const result = await res.json();
+        if(result.success) {
+            alert(`Avaluació guardada permanentment! S'ha calculat la nota segons el pes de degradació per ordre d'entrega.`);
+            document.getElementById('eval-pregunta').value = '';
+            document.getElementById('eval-respuesta').value = '';
+            document.getElementById("eval-activitat").value = '';
+            document.getElementById("contenidor-checks-dinamics").innerHTML = "";
+            carregarDadesPanell();
+            netejarFormulariAvaluacio();
+
+        } else {
+            alert("Error: " + result.error);
+        }
+    } catch(e) { console.error(e); }
+}
+
+// js/gestion.js
+
+// Es crida quan es canvia l'activitat al selector
+function activarBotonsAvaluacio(id_activitat) {
+    const blocDecisio = document.getElementById("bloc-decisio-inicial");
+    const blocChecks = document.getElementById("bloc-avaluacio-checks");
+    
+    // Resetegem l'estat visual
+    blocChecks.classList.add("hidden");
+    
+    if (id_activitat) {
+        blocDecisio.classList.remove("hidden");
+    } else {
+        blocDecisio.classList.add("hidden");
+    }
+}
+
+// CAS 1: L'alumne és NO APTE. Tanquem el torn immediatament sense desar cap check passat
+async function avaluarTornNoApte() {
+    if (!idDelTurnoActual) return;
+    if (!confirm("Vols finalitzar el torn d'aquest alumne com a NO APTE?")) return;
+
+    try {
+        aturarTemporitzador();
+        const res = await fetch('api_gestion.php?accio=finalitzar_no_apte', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_turno: idDelTurnoActual })
+        });
+        
+        const result = await res.json();
+        if(result.success) {
+            alert("Torn tancat com a No Apte.");
+            netejarFormulariAvaluacio();
+            carregarDadesPanell();
+        }
+    } catch(e) { console.error(e); }
+}
+
+// CAS 2: El professor prem APTE. Carregem i mostrem els checks reals.
+async function mostrarBlocChecks() {
+    const id_activitat = document.getElementById("eval-activitat").value;
+    const contenidor = document.getElementById("contenidor-checks-dinamics");
+    
+    const res = await fetch(`api_gestion.php?accio=obtenir_checks&id_act=${id_activitat}`);
+    const dades = await res.json();
+    
+    if(dades.success) {
+        contenidor.innerHTML = "<h4 style='margin-top:0; color:#1e293b;'>Marqueu els checks superats:</h4>";
+        
+        if(dades.checks.length === 0) {
+            contenidor.innerHTML += "<p style='color:#dc2626; font-size:0.9rem; font-weight:bold; text-align:center;'>⚠️ Aquesta activitat no té cap check associat. Sumarà un 10 automàtic.</p>";
+        } else {
+            dades.checks.forEach(chk => {
+                const div = document.createElement("div");
+                div.style.padding = "8px 0";
+                div.style.display = "flex";
+                div.style.alignItems = "center";
+                div.innerHTML = `
+                    <input type="checkbox" class="check-evaluacio-alum" value="${chk.id_check}" style="width:18px; height:18px; margin-right:12px; cursor:pointer;">
+                    <label style='cursor:pointer;'>${chk.titol_check}</label>
+                `;
+                contenidor.appendChild(div);
+            });
+        }
+        
+        // Mostrem la zona de formularis/checks
+        document.getElementById("bloc-avaluacio-checks").classList.remove("hidden");
+    }
+}
+
+// Funció auxiliar per netejar la interfície un cop desat
+function netejarFormulariAvaluacio() {
+    document.getElementById('eval-pregunta').value = '';
+    document.getElementById('eval-respuesta').value = '';
+    document.getElementById("eval-activitat").value = '';
+    document.getElementById("bloc-decisio-inicial").classList.add("hidden");
+    document.getElementById("bloc-avaluacio-checks").classList.add("hidden");
+    document.getElementById("contenidor-checks-dinamics").innerHTML = "";
 }

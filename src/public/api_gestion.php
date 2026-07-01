@@ -153,3 +153,92 @@ if ($accio === 'finalitzar' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 }
+
+// Dins de api_gestion.php, afegeix aquestes accions al teu switch/if de $_GET['accio']
+
+if ($accio === 'obtenir_activitats_eval') {
+    // Retorna les activitats conceptuals apuntant al seu RA respectiu
+    $stmt = $pdo->query("SELECT a.id_activitat_conceptual, a.nom_activitat, r.CodiModul_RA FROM activitats_ra a INNER JOIN RAs r ON a.id_ra = r.id");
+    echo json_encode(['success' => true, 'activitats' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    exit;
+}
+
+if ($accio === 'obtenir_checks') {
+    $id_act = intval($_GET['id_act'] ?? 0);
+    $stmt = $pdo->prepare("SELECT id_check, titol_check FROM checks_activitat WHERE id_activitat_conceptual = ?");
+    $stmt->execute([$id_act]);
+    echo json_encode(['success' => true, 'checks' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    exit;
+}
+
+if ($accio === 'finalitzar_amb_checks' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    $id_turno = intval($input['id_turno'] ?? 0);
+    $id_activitat = intval($input['id_activitat'] ?? 0);
+    $pregunta = $input['pregunta'] ?? '';
+    $respuesta = $input['respuesta'] ?? '';
+    $checks = $input['checks'] ?? [];
+
+    try {
+        $pdo->beginTransaction();
+
+        // 1. Obtenir l'id del alumne d'aquest torn concret per poder guardar-li la seva nota
+        $stmt_t = $pdo->prepare("SELECT id_alumne FROM turnos WHERE id = ?");
+        $stmt_t->execute([$id_turno]);
+        $id_alumne = $stmt_t->fetchColumn();
+
+        if(!$id_alumne) { throw new Exception("No s'ha trobat l'alumne associat al torn."); }
+
+        // 2. Processar cada un dels checks enviats pel formulari
+        foreach ($checks as $chk) {
+            $id_check = intval($chk['id_check']);
+            $completat = intval($chk['completat']);
+            
+            // 📊 Càlcul del Pes de Degradació segons el nombre d'alumnes que s'han avaluat d'aquest check ABANS
+            $stmt_count = $pdo->prepare("SELECT COUNT(*) FROM notes_checks_alumne WHERE id_check = ? AND completat = 1");
+            $stmt_count->execute([$id_check]);
+            $alumnes_avaluats_abans = intval($stmt_count->fetchColumn());
+
+            // Executem la regla dels grups de 5 (100%, 90%, 80%, 70%, 60%, 50%)
+            if ($alumnes_avaluats_abans < 5)        $pct = 100;
+            else if ($alumnes_avaluats_abans < 10)  $pct = 90;
+            else if ($alumnes_avaluats_abans < 15)  $pct = 80;
+            else if ($alumnes_avaluats_abans < 20)  $pct = 70;
+            else if ($alumnes_avaluats_abans < 25)  $pct = 60;
+            else                                    $pct = 50;
+
+            // Inserim o actualitzem la nota del check de l'alumne
+            $stmt_ins = $pdo->prepare("
+                INSERT INTO notes_checks_alumne (id_alumne, id_check, completat, percentatge_aplicat) 
+                VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE completat = VALUES(completat), percentatge_aplicat = VALUES(percentatge_aplicat)
+            ");
+            $stmt_ins->execute([$id_alumne, $id_check, $completat, $pct]);
+        }
+
+        // 3. Finalitzem el torn com a atès de manera tradicional i salvem les observacions
+        $stmt_f = $pdo->prepare("UPDATE turnos SET estado = 'atendido', evaluacion = 'atendido' WHERE id = ?");
+        $stmt_f->execute([$id_turno]);
+
+        $pdo->commit();
+        echo json_encode(['success' => true]);
+
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($accio === 'finalitzar_no_apte' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $id_turno = intval($input['id_turno'] ?? 0);
+
+    // Passem el torn a "atendido" però marquem a l'avaluació interna del registre que ha estat un "no_apte"
+    $stmt = $pdo->prepare("UPDATE turnos SET estado = 'atendido', evaluacion = 'no_apte' WHERE id = ?");
+    $stmt->execute([$id_turno]);
+
+    echo json_encode(['success' => true]);
+    exit;
+}

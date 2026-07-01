@@ -48,31 +48,34 @@ require_once 'seguridad_profesor.php'; // Protegeix la vista HTML
                 </div>
             </div>
 
-            <div id="zona-avalua" class="evaluate-zone hidden" style="display: block !important; width: 100% !important; clear: both !important; float: none !important; margin-top: 25px !important;">
+            <div id="zona-avalua" class="hidden" style="background: white; padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <h3 style="margin-top: 0; color: #1e293b;">📋 Avaluació de l'Alumne Actual</h3>
                 
-                <div style="display: block !important; width: 100% !important; margin-bottom: 15px !important; text-align: left !important;">
-                    <label for="eval-pregunta" style="display: block !important; font-weight: bold !important; font-size: 0.85rem !important; margin-bottom: 6px !important; color: #1e293b !important;">
-                        📋 PREGUNTA REALITZADA:
-                    </label>
-                    <textarea id="eval-pregunta" rows="3" placeholder="Introduce aquí la pregunta conceptual o l'exercici..." 
-                              style="display: block !important; width: 100% !important; min-width: 100% !important; max-width: 100% !important; padding: 12px !important; border: 1px solid #cbd5e1 !important; border-radius: 6px !important; background-color: #f8fafc !important; font-family: inherit !important; box-sizing: border-box !important; resize: vertical !important;"></textarea>
+                <div style="margin-bottom: 15px;">
+                    <label for="eval-activitat" style="display:block; font-weight:bold; font-size:0.85rem; margin-bottom:5px; color:#475569;">Selecciona l'activitat que està defensant:</label>
+                    <select id="eval-activitat" style="width:100%; padding:8px; border-radius:6px; border:1px solid #cbd5e1;" onchange="activarBotonsAvaluacio(this.value)">
+                        </select>
                 </div>
 
-                <div style="display: block !important; width: 100% !important; margin-bottom: 20px !important; text-align: left !important;">
-                    <label for="eval-respuesta" style="display: block !important; font-weight: bold !important; font-size: 0.85rem !important; margin-bottom: 6px !important; color: #1e293b !important;">
-                        💬 RESPOSTA DE L'ALUMNE:
-                    </label>
-                    <textarea id="eval-respuesta" rows="3" placeholder="Afegeix els detalls de la resposta de l'alumne o anotacions..." 
-                              style="display: block !important; width: 100% !important; min-width: 100% !important; max-width: 100% !important; padding: 12px !important; border: 1px solid #cbd5e1 !important; border-radius: 6px !important; background-color: #f8fafc !important; font-family: inherit !important; box-sizing: border-box !important; resize: vertical !important;"></textarea>
+                <div id="bloc-decisio-inicial" class="hidden" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button onclick="avaluarTornNoApte()" style="flex: 1; background-color: #dc2626; color: white; padding: 12px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">❌ No Apte</button>
+                    <button onclick="mostrarBlocChecks()" style="flex: 1; background-color: #2563eb; color: white; padding: 12px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">✅ Apte (Avaluar Checks)</button>
                 </div>
 
-                <div style="display: flex !important; flex-direction: row !important; gap: 15px !important; width: 100% !important; margin-top: 20px !important; clear: both !important;">
-                    <button id="btn-apte" class="btn btn-apte" style="flex: 1 !important; padding: 14px !important; font-size: 0.95rem !important; font-weight: bold !important; color: white !important; background-color: #059669 !important; border-radius: 8px !important; border: none !important; cursor: pointer !important; min-height: auto !important; height: auto !important;">
-                        ✅ APTE
-                    </button>
-                    <button id="btn-no-apte" class="btn btn-no-apte" style="flex: 1 !important; padding: 14px !important; font-size: 0.95rem !important; font-weight: bold !important; color: white !important; background-color: #dc2626 !important; border-radius: 8px !important; border: none !important; cursor: pointer !important; min-height: auto !important; height: auto !important;">
-                        ❌ NO APTE
-                    </button>
+                <div id="bloc-avaluacio-checks" class="hidden">
+                    <div id="contenidor-checks-dinamics" style="margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label style="display:block; font-weight:bold; font-size:0.85rem; margin-bottom:5px;">Pregunta realitzada:</label>
+                        <textarea id="eval-pregunta" style="width:100%; border-radius:6px; border:1px solid #cbd5e1; height:50px;"></textarea>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display:block; font-weight:bold; font-size:0.85rem; margin-bottom:5px;">Resposta / Observacions:</label>
+                        <textarea id="eval-respuesta" style="width:100%; border-radius:6px; border:1px solid #cbd5e1; height:50px;"></textarea>
+                    </div>
+
+                    <button id="btn-desar-avaluacio-checks" class="btn" style="background-color: #16a34a; color: white; width: 100%; padding: 12px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;" onclick="finalitzarAval_Checks()">💾 Desar Avaluació i Tancar Torn</button>
                 </div>
             </div>
         </div>
