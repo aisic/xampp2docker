@@ -13,11 +13,19 @@
   "error_server": "Error crítico del servidor.",
   "queue_closed": "La cola está cerrada por el profesor",
   "already_in_queue": "Ya estás en la cola",
-  "its_your_turn": "¡ES TU TURNO! Pasa a la mesa del profesor",
   "queue_is_open": "🟢 LA COLA ESTÁ ABIERTA (Puedes pedir turno)",
   "queue_is_closed": "🔴 LA COLA ESTÁ CERRADA POR EL PROFESOR",
   "queue_closed_temporarily": "🔒 Cola cerrada temporalmente",
-  "notification_body": "El profesor te llama para la revisión.",
-  "invalid_json_error": "Error crítico del servidor: La respuesta no es un JSON válido.",
-  "warning_prefix": "Atención: "
+  "page_title": "Cola de Alumnos - Mi Turno",
+  "label_modulo": "Módulo:",
+  "label_ra": "Resultado de Aprendizaje (RA):",
+  "label_activitat": "Actividad:",
+  "label_check": "Criterio / Check a evaluar:",
+  "select_modulo_first": "Primero elige un módulo...",
+  "select_ra_first": "Primero elige un RA...",
+  "select_activity_first": "Primero elige una actividad...",
+  "its_your_turn": "¡Es tu turno!",
+  "notification_body": "El profesor te está esperando, ve hacia la mesa de evaluación.",
+  "invalid_json_error": "El servidor ha devuelto una respuesta incorrecta.",
+  "warning_prefix": "⚠️ Atención: "
 }

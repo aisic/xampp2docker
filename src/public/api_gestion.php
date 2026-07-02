@@ -1,13 +1,18 @@
 <?php
-// api_gestion.php
+// =========================================================================
+// 📑 API_GESTION.PHP - ENDPOINT CENTRALITZAT DE CONTROL DE CUES I QUALIFICACIONS
+// =========================================================================
 session_start();
 
+// Control de depuració en desenvolupament (Desactivar o posar a 0 en entorns de producció)
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
+// Capçaleres obligatòries de seguretat i definició de tipus de contingut (JSON format)
 require_once 'seguridad_profesor.php'; 
 header('Content-Type: application/json');
 
+// Connexió centralitzada i configurada a la Base de Dades
 require_once __DIR__ . '/config/db.php'; 
 
 try {
@@ -17,52 +22,81 @@ try {
          PDO::ATTR_EMULATE_PREPARES   => false, 
      ]);
 } catch (\PDOException $e) {
-     echo json_encode(['error' => 'Error de conexión: ' . $e->getMessage()]);
+     echo json_encode(['success' => false, 'error' => 'Error de conexión: ' . $e->getMessage()]);
      exit;
 }
 
-$id_activitat = 1; 
+// Identificadors de control per defecte de l'assignatura o l'aula activa
+$id_activitat_global = 1; 
 $accio = $_GET['accio'] ?? '';
 
-// --- ACCIÓ 1: OBTENIR ESTAT ACTUAL DEL PANELL ---
+// Captura i descodificació dinàmica del cos (BODY) de peticions POST en format JSON
+$input = json_decode(file_get_contents('php://input'), true) ?? [];
+
+// =========================================================================
+// 🔍 ACCIÓ 1: OBTENIR ESTAT ACTUAL DEL PANELL (POLLING SINCRO DES DE FRONTEND)
+// =========================================================================
 if ($accio === 'estat') {
+    // 1. Obtenir informació del codi de mòdul/RA i l'estat d'obertura de la cua
     $stmt = $pdo->prepare("
-        SELECT 
-            r.CodiModul_RA, 
-            r.cola_abierta, 
-            m.nom_modul 
+        SELECT r.CodiModul_RA, r.cola_abierta, m.nom_modul 
         FROM RAs r
         INNER JOIN moduls m ON r.id_modul = m.id_modul
         WHERE r.id = ?
     ");
-    $stmt->execute([$id_activitat]);
+    $stmt->execute([$id_activitat_global]);
     $asignatura = $stmt->fetch();
 
-    // 2. 🟢 CORREGIT: Alumne actual amb JOIN per obtenir el nom i cognoms directament
+    // 2. Localitzar l'alumne que està assegut a la taula ('atendiendo') amb l'activitat/criteri
     $stmt = $pdo->prepare("
-        SELECT t.id, t.turno_numero, t.id_alumne, CONCAT(a.nom_alumne, ' ', a.cognoms_alumne) as nombre_alumno 
+        SELECT 
+            t.id AS id_turno, 
+            t.turno_numero, 
+            t.id_alumne, 
+            t.id_check_evaluacio,
+            CONCAT(a.nom_alumne, ' ', a.cognoms_alumne) AS nombre_alumno,
+            act.nom_activitat,
+            c.titol_check
         FROM turnos t
         INNER JOIN alumnes a ON t.id_alumne = a.id_alumne
-        WHERE t.id_activitat = ? AND t.estado = 'atendiendo' 
+        LEFT JOIN checks_activitat c ON t.id_check_evaluacio = c.id_check
+        LEFT JOIN activitats_ra act ON c.id_activitat_conceptual = act.id_activitat_conceptual
+        WHERE t.estado = 'atendiendo' 
         LIMIT 1
     ");
-    $stmt->execute([$id_activitat]);
-    $atendiendo = $stmt->fetch() ?: ['id' => null, 'turno_numero' => '--', 'id_alumne' => null, 'nombre_alumno' => 'Buscant...'];
+    $stmt->execute();
+    $atendiendo = $stmt->fetch();
 
-    // 3. Quants alumnes queden esperant a la cua
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM turnos WHERE id_activitat = ? AND estado = 'esperando'");
-    $stmt->execute([$id_activitat]);
+    // Estructura de contingència si no hi ha cap alumne en procés d'avaluació actiu
+    if (!$atendiendo) {
+        $atendiendo = [
+            'id_turno' => null, 
+            'turno_numero' => '--', 
+            'id_alumne' => null, 
+            'id_check_evaluacio' => null,
+            'nombre_alumno' => 'Buscant...',
+            'nom_activitat' => '-',
+            'titol_check' => '-'
+        ];
+    }
+
+    // 3. Recompte numèric dels alumnes totals que romanen a la cua d'espera
+    $stmt = $pdo->query("SELECT COUNT(*) FROM turnos WHERE estado = 'esperando'");
     $en_espera = $stmt->fetchColumn();
 
-    // 4. 🟢 CORREGIT: Llista de la cua actual amb JOIN per evitar l'undefined al JS
-    $stmt = $pdo->prepare("
-        SELECT t.id, t.turno_numero, CONCAT(a.nom_alumne, ' ', a.cognoms_alumne) as nombre_alumno 
+    // 4. Llistat ordenat adaptatiu de la cua per a la llista inferior de visualització
+    $stmt = $pdo->query("
+        SELECT 
+            t.id AS id_turno, 
+            t.turno_numero, 
+            CONCAT(a.nom_alumne, ' ', a.cognoms_alumne) AS nombre_alumno,
+            c.titol_check
         FROM turnos t
         INNER JOIN alumnes a ON t.id_alumne = a.id_alumne
-        WHERE t.id_activitat = ? AND t.estado = 'esperando' 
+        LEFT JOIN checks_activitat c ON t.id_check_evaluacio = c.id_check
+        WHERE t.estado = 'esperando' 
         ORDER BY t.posicion_cola ASC
     ");
-    $stmt->execute([$id_activitat]);
     $cua_llista = $stmt->fetchAll();
 
     echo json_encode([
@@ -77,30 +111,32 @@ if ($accio === 'estat') {
     exit;
 }
 
-// --- ACCIÓ 2: COMMUTAR CUA (OBRIR / TANCAR) ---
+// =========================================================================
+// 🎛️ ACCIÓ 2: COMMUTAR PERMÍS DE CUA (BLOQUEJAR / OBRIR ENTRADES DES DE FRONT)
+// =========================================================================
 if ($accio === 'toggle_cua' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    $nou_estat = $input['estat'] ? 1 : 0;
+    $nou_estat = !empty($input['estat']) ? 1 : 0;
 
     $stmt = $pdo->prepare("UPDATE RAs SET cola_abierta = ? WHERE id = ?");
-    $stmt->execute([$nou_estat, $id_activitat]);
+    $stmt->execute([$nou_estat, $id_activitat_global]);
+    
     echo json_encode(['success' => true]);
     exit;
 }
 
-// --- ACCIÓ 3: CRIDAR SEGÜENT ALUMNE ---
+// =========================================================================
+// 📢 ACCIÓ 3: CRIDAR SEGÜENT CANDIDAT I TANCA AUTOMÀTICA DE DESCUIDATS
+// =========================================================================
 if ($accio === 'siguiente' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    // 🟢 CORREGIT: Canviat 'finalizado' per 'atendido' per lligar amb les estadístiques
-    $stmt = $pdo->prepare("
+    // Si un alumne es va quedar obert a la taula per descuit sense finalitzar pel panell, es tanca com a No Apte automàtic
+    $stmt = $pdo->query("
         UPDATE turnos 
         SET estado = 'atendido', resultat_prova = 'no_apte', hora_fin_atencion = NOW(), posicion_cola = 0 
-        WHERE id_activitat = ? AND estado = 'atendiendo'
+        WHERE estado = 'atendiendo'
     ");
-    $stmt->execute([$id_activitat]);
 
-    // Cridem al següent de la cua
-    $stmt = $pdo->prepare("SELECT id FROM turnos WHERE id_activitat = ? AND estado = 'esperando' ORDER BY posicion_cola ASC LIMIT 1");
-    $stmt->execute([$id_activitat]);
+    // Seleccionem el següent de la llista segons l'ordre cronològic estricte de cua
+    $stmt = $pdo->query("SELECT id FROM turnos WHERE estado = 'esperando' ORDER BY posicion_cola ASC LIMIT 1");
     $proxim_id = $stmt->fetchColumn();
 
     if ($proxim_id) {
@@ -113,132 +149,101 @@ if ($accio === 'siguiente' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// --- ACCIÓ 4: FINALITZAR I DESAR EXAMEN COMPLET ---
-if ($accio === 'finalitzar' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    
-    $turno_id = intval($input['id'] ?? 0);
-    $resultado = $input['resultado'] ?? ''; 
-    $pregunta = $input['pregunta'] ?? '';
-    $respuesta = $input['respuesta'] ?? '';
-
-    if (!in_array($resultado, ['apte', 'no_apte'])) {
-        echo json_encode(['success' => false, 'error' => 'Resultat d\'avaluació no vàlid.']);
-        exit;
-    }
-
-    if ($turno_id <= 0) {
-        echo json_encode(['success' => false, 'error' => 'Identificador de torn incorrecte.']);
-        exit;
-    }
-
-    try {
-        $stmt = $pdo->prepare("
-            UPDATE turnos 
-            SET estado = 'atendido', 
-                resultat_prova = ?, 
-                pregunta = ?, 
-                respuesta = ?, 
-                hora_fin_atencion = NOW(),
-                posicion_cola = 0
-            WHERE id = ? AND id_activitat = ?
-        ");
-        $stmt->execute([$resultado, $pregunta, $respuesta, $turno_id, $id_activitat]);
-
-        echo json_encode(['success' => true]);
-        exit;
-        
-    } catch (\PDOException $e) {
-        echo json_encode(['success' => false, 'error' => 'Error a la BD: ' . $e->getMessage()]);
-        exit;
-    }
-}
-
-// Dins de api_gestion.php, afegeix aquestes accions al teu switch/if de $_GET['accio']
-
-if ($accio === 'obtenir_activitats_eval') {
-    // Retorna les activitats conceptuals apuntant al seu RA respectiu
-    $stmt = $pdo->query("SELECT a.id_activitat_conceptual, a.nom_activitat, r.CodiModul_RA FROM activitats_ra a INNER JOIN RAs r ON a.id_ra = r.id");
-    echo json_encode(['success' => true, 'activitats' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
-    exit;
-}
-
-if ($accio === 'obtenir_checks') {
-    $id_act = intval($_GET['id_act'] ?? 0);
-    $stmt = $pdo->prepare("SELECT id_check, titol_check FROM checks_activitat WHERE id_activitat_conceptual = ?");
-    $stmt->execute([$id_act]);
-    echo json_encode(['success' => true, 'checks' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
-    exit;
-}
-
-if ($accio === 'finalitzar_amb_checks' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    
+// =========================================================================
+// 💾 ACCIÓ 4: DESAR AVALUACIÓ UNIFICADA I TANCAR EL TORN ACTUAL (APTE / NO APTE)
+// =========================================================================
+if ($accio === 'finalitzar_apte_individual' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Sanitització estricta numèrica de claus de BD
     $id_turno = intval($input['id_turno'] ?? 0);
-    $id_activitat = intval($input['id_activitat'] ?? 0);
-    $pregunta = $input['pregunta'] ?? '';
-    $respuesta = $input['respuesta'] ?? '';
-    $checks = $input['checks'] ?? [];
+    $id_check = intval($input['id_check'] ?? 0);
+    
+    // Extracció i neteja de cadenes (Filtre XSS preventiu mitjançant htmlspecialchars)
+    $resultat_prova = trim($input['resultat_prova'] ?? ''); 
+    $pregunta = htmlspecialchars(trim($input['pregunta'] ?? ''), ENT_QUOTES, 'UTF-8');
+    $respuesta = htmlspecialchars(trim($input['respuesta'] ?? ''), ENT_QUOTES, 'UTF-8');
+
+    // Validacions de control de consistència de dades primitives
+    if ($id_turno <= 0 || $id_check <= 0 || !in_array($resultat_prova, ['apte', 'no_apte'])) {
+        echo json_encode(['success' => false, 'error' => 'Falten dades obligatòries o el resultat triat és invàlid.']);
+        exit;
+    }
 
     try {
         $pdo->beginTransaction();
 
-        // 1. Obtenir l'id del alumne d'aquest torn concret per poder guardar-li la seva nota
+        // 1. Cercar l'id de l'alumne assignat al registre d'aquest torn actiu
         $stmt_t = $pdo->prepare("SELECT id_alumne FROM turnos WHERE id = ?");
         $stmt_t->execute([$id_turno]);
         $id_alumne = $stmt_t->fetchColumn();
 
-        if(!$id_alumne) { throw new Exception("No s'ha trobat l'alumne associat al torn."); }
-
-        // 2. Processar cada un dels checks enviats pel formulari
-        foreach ($checks as $chk) {
-            $id_check = intval($chk['id_check']);
-            $completat = intval($chk['completat']);
-            
-            // 📊 Càlcul del Pes de Degradació segons el nombre d'alumnes que s'han avaluat d'aquest check ABANS
-            $stmt_count = $pdo->prepare("SELECT COUNT(*) FROM notes_checks_alumne WHERE id_check = ? AND completat = 1");
-            $stmt_count->execute([$id_check]);
-            $alumnes_avaluats_abans = intval($stmt_count->fetchColumn());
-
-            // Executem la regla dels grups de 5 (100%, 90%, 80%, 70%, 60%, 50%)
-            if ($alumnes_avaluats_abans < 5)        $pct = 100;
-            else if ($alumnes_avaluats_abans < 10)  $pct = 90;
-            else if ($alumnes_avaluats_abans < 15)  $pct = 80;
-            else if ($alumnes_avaluats_abans < 20)  $pct = 70;
-            else if ($alumnes_avaluats_abans < 25)  $pct = 60;
-            else                                    $pct = 50;
-
-            // Inserim o actualitzem la nota del check de l'alumne
-            $stmt_ins = $pdo->prepare("
-                INSERT INTO notes_checks_alumne (id_alumne, id_check, completat, percentatge_aplicat) 
-                VALUES (?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE completat = VALUES(completat), percentatge_aplicat = VALUES(percentatge_aplicat)
-            ");
-            $stmt_ins->execute([$id_alumne, $id_check, $completat, $pct]);
+        if (!$id_alumne) { 
+            throw new Exception("L'identificador del torn no correspon a cap alumne matriculat."); 
         }
 
-        // 3. Finalitzem el torn com a atès de manera tradicional i salvem les observacions
-        $stmt_f = $pdo->prepare("UPDATE turnos SET estado = 'atendido', evaluacion = 'atendido' WHERE id = ?");
-        $stmt_f->execute([$id_turno]);
+        // 2. CAS 🟢: L'ALUMNE ÉS APTE -> Es calcula la seva bonificació proporcional per cua
+        if ($resultat_prova === 'apte') {
+            // Recompte de l'històric d'alumnes enllestits abans que ell per degradar la nota linealment
+            $stmt_count = $pdo->prepare("SELECT COUNT(*) FROM notes_checks_alumne WHERE id_check = ? AND completat = 1");
+            $stmt_count->execute([$id_check]);
+            $alumnes_abans = intval($stmt_count->fetchColumn());
+
+            // Escala logarítmica/algorísmica de pes relatiu d'entrega (Trams de 5 alumnes)
+            if ($alumnes_abans < 5)        $pct = 100;
+            else if ($alumnes_abans < 10)  $pct = 90;
+            else if ($alumnes_abans < 15)  $pct = 80;
+            else if ($alumnes_abans < 20)  $pct = 70;
+            else if ($alumnes_abans < 25)  $pct = 60;
+            else                           $pct = 50;
+
+            // Inserció robusta de dades acadèmiques amb actualització forçada on duplicate key
+            $stmt_ins = $pdo->prepare("
+                INSERT INTO notes_checks_alumne 
+                    (id_alumne, id_check, completat, percentatge_aplicat, pregunta_realitzada, resposta_observacions) 
+                VALUES (?, ?, 1, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE 
+                    completat = 1, 
+                    percentatge_aplicat = VALUES(percentatge_aplicat),
+                    pregunta_realitzada = VALUES(pregunta_realitzada),
+                    resposta_observacions = VALUES(resposta_observacions)
+            ");
+            $stmt_ins->execute([$id_alumne, $id_check, $pct, $pregunta, $respuesta]);
+
+        } else {
+            // 3. CAS ❌: L'ALUMNE ÉS NO APTE -> Es desa la pregunta/resposta però es fixa el percentatge a 0
+            $stmt_ins = $pdo->prepare("
+                INSERT INTO notes_checks_alumne 
+                    (id_alumne, id_check, completat, percentatge_aplicat, pregunta_realitzada, resposta_observacions) 
+                VALUES (?, ?, 0, 0, ?, ?)
+                ON DUPLICATE KEY UPDATE 
+                    completat = 0, 
+                    percentatge_aplicat = 0,
+                    pregunta_realitzada = VALUES(pregunta_realitzada),
+                    resposta_observacions = VALUES(resposta_observacions)
+            ");
+            $stmt_ins->execute([$id_alumne, $id_check, $pregunta, $respuesta]);
+        }
+
+        // 4. Cloure l'estat del torn de cua passant-lo a atès i registrant el dictamen del mestre
+        $stmt_f = $pdo->prepare("
+            UPDATE turnos 
+            SET estado = 'atendido', 
+                resultat_prova = ?, 
+                hora_fin_atencion = NOW(), 
+                posicion_cola = 0 
+            WHERE id = ?
+        ");
+        $stmt_f->execute([$resultat_prova, $id_turno]);
 
         $pdo->commit();
         echo json_encode(['success' => true]);
 
     } catch (Exception $e) {
         $pdo->rollBack();
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        echo json_encode(['success' => false, 'error' => 'Error transaccional del servidor: ' . $e->getMessage()]);
     }
     exit;
 }
 
-if ($accio === 'finalitzar_no_apte' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    $id_turno = intval($input['id_turno'] ?? 0);
-
-    // Passem el torn a "atendido" però marquem a l'avaluació interna del registre que ha estat un "no_apte"
-    $stmt = $pdo->prepare("UPDATE turnos SET estado = 'atendido', evaluacion = 'no_apte' WHERE id = ?");
-    $stmt->execute([$id_turno]);
-
-    echo json_encode(['success' => true]);
-    exit;
-}
+// Retorn de contingència en cas de crides amb rutes o paràmetres GET manipulats
+echo json_encode(['success' => false, 'error' => 'Acción no válida o no implementada en este servicio.']);
+exit;

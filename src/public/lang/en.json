@@ -17,7 +17,15 @@
   "queue_is_open": "🟢 THE QUEUE IS OPEN (You can request a turn)",
   "queue_is_closed": "🔴 THE QUEUE IS CLOSED BY THE TEACHER",
   "queue_closed_temporarily": "🔒 Queue closed temporarily",
-  "notification_body": "The teacher is calling you for review.",
-  "invalid_json_error": "Critical server error: The response is not a valid JSON.",
-  "warning_prefix": "Warning: "
+  "page_title": "Student Queue - My Turn",
+  "label_modulo": "Module:",
+  "label_ra": "Learning Outcome (RA):",
+  "label_activitat": "Activity:",
+  "label_check": "Criterion / Check to evaluate:",
+  "select_modulo_first": "Choose a module first...",
+  "select_ra_first": "Choose a learning outcome first...",
+  "select_activity_first": "Choose an activity first...",
+  "notification_body": "The teacher is waiting for you, please go to the evaluation desk.",
+  "invalid_json_error": "The server returned an invalid response.",
+  "warning_prefix": "⚠️ Warning: "
 }

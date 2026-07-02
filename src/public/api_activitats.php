@@ -103,3 +103,19 @@ if ($accio === 'eliminar_activitat' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     echo json_encode(['success' => true]);
     exit;
 }
+
+// Dins de api_activitats.php (o on gestionis les accions de llistat)
+
+if ($accio === 'llistar_checks_alumne') {
+    $id_act = intval($_GET['id_act'] ?? 0);
+    
+    // Retornem només l'ID i el títol del check d'aquella activitat
+    $stmt = $pdo->prepare("SELECT id_check, titol_check FROM checks_activitat WHERE id_activitat_conceptual = ? ORDER BY id_check ASC");
+    $stmt->execute([$id_act]);
+    
+    echo json_encode([
+        'success' => true, 
+        'checks' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+    ]);
+    exit;
+}

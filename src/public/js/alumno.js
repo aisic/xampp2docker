@@ -1,5 +1,7 @@
-// js/alumno.js
-let jaNotificat = false;
+// ==========================================
+// 🌍 ESTAT GLOBAL I CONFIGURACIÓ DE TRADUCCIONS
+// ==========================================
+let jaNotificat = false; // Controla que la notificació push del torn només s'enviï una vegada
 
 window.I18n = {
     translations: {},
@@ -8,35 +10,79 @@ window.I18n = {
     }
 };
 
-// Funció asíncrona per descarregar les traduccions des de la carpeta lang/
+/**
+ * Carrega asíncronament les traduccions des de la carpeta lang/ basant-se en la sessió de PHP
+ */
 async function inicialitzarIdioma() {
     try {
-        // 1. Demanem a l'API l'idioma que té guardat PHP a la sessió actual
+        // 1. Obtenim l'estat actual de la sessió de l'alumne (inclou l'idioma elegit)
         const respostaEstat = await fetch('api_alumno.php?accio=estat');
         const dadesEstat = await respostaEstat.json();
-        
-        // Suposem que api_alumno.php ens torna una clau 'lang' (ex: 'ca', 'es', 'en').
-        // Si no la troba, forcem 'ca' per defecte.
         const idiomaSessio = dadesEstat.lang || 'ca'; 
         
-        // 2. Anem a buscar el fitxer JSON correcte a la carpeta lang/
+        // 2. Descarreguem el diccionari JSON actiu
         const respostaLang = await fetch(`lang/${idiomaSessio}.json`);
-        
-        // 3. Guardem les traduccions a l'objecte global
         window.I18n.translations = await respostaLang.json();
         
     } catch (error) {
         console.error("No s'han pogut carregar les traduccions, utilitzant sistema d'emergència:", error);
-        // Fallback en cas d'error de xarxa perquè l'app no es congeli
+        // Fallback per evitar que la interfície es quedi en blanc si falla la xarxa
         window.I18n.translations = { "minutes": "min", "your_turn_is": "Torn:" };
     }
 }
 
-// Demanar permís per a les notificacions només entrar
-if (Notification.permission === "default") {
-    Notification.requestPermission();
-}
+// ==========================================
+// ⏳ CICLE DE VIDA I DISPARADORS D'EVENTS (DOM)
+// ==========================================
+document.addEventListener("DOMContentLoaded", async () => {
+    // 1. Inicialització de l'idioma i primers selectors elementals
+    await inicialitzarIdioma(); 
+    carregarModulsAlumne();
 
+    // 2. Sol·licitud preventiva de permisos per a notificacions d'escriptori
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+    }
+
+    // 3. Controladors d'esdeveniments per als Dropdowns Encadenats
+    document.getElementById("alum-modulo").addEventListener("change", (e) => {
+        vincularDropdownsAlumne(e.target.value, "alum-ra", "llistar_ras&id_modul=", "Primer tria un mòdul...");
+        resetearSelectorAlumne("alum-activitat", "Primer tria un RA...");
+        resetearSelectorAlumne("alum-check", "Primer tria una activitat...");
+    });
+
+    document.getElementById("alum-ra").addEventListener("change", (e) => {
+        vincularDropdownsAlumne(e.target.value, "alum-activitat", "llistar_activitats&id_ra=", "Primer tria un RA...");
+        resetearSelectorAlumne("alum-check", "Primer tria una activitat...");
+    });
+
+    document.getElementById("alum-activitat").addEventListener("change", (e) => {
+        vincularDropdownsAlumne(e.target.value, "alum-check", "llistar_checks_alumne&id_act=", "Primer tria una activitat...");
+    });
+    
+    // 4. Gestor de l'enviament del formulari complet amb el check elegit
+    document.getElementById("form-demanar-torn").addEventListener("submit", enviarSollicitudTorn);
+
+    // 5. Gestor per a desapuntar-se de la cua de manera immediata
+    const btnDesapuntar = document.getElementById("desapuntarse-btn");
+    if (btnDesapuntar) {
+        btnDesapuntar.addEventListener("click", async () => {
+            await accionarCua("desapuntarse");
+        });
+    }
+
+    // 6. Engegada del Polling / Sincronització en calent d'estats cada 3 segons
+    await comprovarEstatCua();
+    setInterval(comprovarEstatCua, 3000);
+});
+
+// ==========================================
+// 📊 CONTROL DE FLUX I SCRIPTOR DE LA CUA
+// ==========================================
+
+/**
+ * Revisa en bucle l'estat actual de la cua i commuta les pantalles de sol·licitud/espera
+ */
 async function comprovarEstatCua() {
     try {
         const resposta = await fetch('api_alumno.php?accio=estat');
@@ -46,18 +92,16 @@ async function comprovarEstatCua() {
         const textEstat = document.getElementById('estat-cua-text');
         const botoApuntar = document.getElementById('apuntarse-btn'); 
 
-        // 1. CONTROL DE VISIBILITAT DE PANTALLES
+        // 1. Commutació dinàmica de visualitzacions segons estat de l'alumne
         if (dades.en_cua) {
             document.getElementById('seccio-apuntarse').classList.add('hidden');
             document.getElementById('seccio-espera').classList.remove('hidden');
             
             document.getElementById('el-meu-torn').textContent = dades.el_meu_torn;
             document.getElementById('alumnes-davant').textContent = dades.alumnes_davant;
-            // Traducció dinàmica del sufix "min"
             document.getElementById('temps-estimat').textContent = dades.temps_estimat + " " + window.I18n.translate('minutes');
 
             if (dades.estat_actual === 'atendiendo') {
-                // Text en cas que sigui el torn de l'alumne
                 document.getElementById('text-estat-torn').innerHTML = `<span style='color:#15803d; font-weight:bold;'>${window.I18n.translate('its_your_turn')}</span>`;
                 llencarNotificacio();
             } else {
@@ -70,7 +114,7 @@ async function comprovarEstatCua() {
             jaNotificat = false;
         }
 
-        // 2. CONTROL UNIFICAT DE L'ESTAT DE LA CUA (Amb traduccions aplicades)
+        // 2. Control de tancament temporitzat de la cua per part del docent
         if (contenidorEstat && textEstat) {
             if (dades.cola_abierta == 1) {
                 textEstat.textContent = window.I18n.translate('queue_is_open');
@@ -106,12 +150,21 @@ async function comprovarEstatCua() {
     }
 }
 
-// 🟢 FUNCIÓ SECURE: Gestiona l'acció actuant en l'idioma seleccionat
-async function accionarCua(accio) {
+/**
+ * 🟢 VERSIÓ MILLORADA: Executa transaccions POST contra l'API de l'alumne
+ * acceptant paràmetres addicionals (ID de checks, formularis, etc.) en format JSON.
+ */
+async function accionarCua(accio, cosDades = null) {
     try {
-        const resposta = await fetch(`api_alumno.php?accio=${accio}`, { method: 'POST' });
+        const opcionsFetch = { method: 'POST' };
         
-        // Llegim el text de resposta directament per avaluar si està buit o malformat
+        // Si estem enviant objectes (com el check), configurem la capçalera JSON
+        if (cosDades) {
+            opcionsFetch.headers = { 'Content-Type': 'application/json' };
+            opcionsFetch.body = JSON.stringify(cosDades);
+        }
+
+        const resposta = await fetch(`api_alumno.php?accio=${accio}`, opcionsFetch);
         const textResposta = await resposta.text();
         
         let dades;
@@ -124,48 +177,110 @@ async function accionarCua(accio) {
         }
 
         if (dades && dades.success) {
-            // Si la base de dades s'ha guardat correctament, actualitzem la vista de seguida
             await comprovarEstatCua(); 
         } else {
-            // Mostrem l'error directament traduït si prové del PHP, o l'afegim al prefix d'atenció
-            alert(window.I18n.translate('warning_prefix') + (dades.error || "No s'ha pogut processar la petició."));
+            alert(window.I18n.translate('warning_prefix') + (dades.error || "Error indeterminat."));
         }
     } catch (error) {
         console.error("Error de xarxa en processar acció:", error);
     }
 }
 
-document.addEventListener("DOMContentLoaded", async () => { 
+// ==========================================
+// 📂 LOGÍSTICA DE DROPDOWNS ASÍNCRONS (API)
+// ==========================================
 
-    const btnApuntar = document.getElementById("apuntarse-btn");
-    if (btnApuntar) {
-        btnApuntar.addEventListener("click", async () => {
-            if ("Notification" in window && Notification.permission === "default") {
-                await Notification.requestPermission();
-            }
-            await accionarCua("apuntarse");
+/**
+ * Omple el dropdown de mòduls disponibles un cop el DOM està a punt
+ */
+async function carregarModulsAlumne() {
+    const res = await fetch('api_activitats.php?accio=llistar_moduls');
+    const dades = await res.json();
+    if (dades.success) {
+        const select = document.getElementById("alum-modulo");
+        let html = '<option value="">-- Selecciona un Mòdul --</option>';
+        dades.moduls.forEach(m => {
+            html += `<option value="${m.id_modul}">[${m.cicle_formatiu}] ${m.nom_modul}</option>`;
         });
+        select.innerHTML = html;
+    }
+}
+
+/**
+ * Genera el flux en cadena carregant els sub-elements basant-se en l'ID pare passat
+ */
+async function vincularDropdownsAlumne(idPare, elementIdTarget, rutaAccio, textDefecte) {
+    const selectTarget = document.getElementById(elementIdTarget);
+    if (!idPare) {
+        resetearSelectorAlumne(elementIdTarget, textDefecte);
+        return;
     }
 
-    const btnDesapuntar = document.getElementById("desapuntarse-btn");
-    if (btnDesapuntar) {
-        btnDesapuntar.addEventListener("click", async () => {
-            await accionarCua("desapuntarse");
-        });
-    }
-    // Inicialització del Polling actiu
-    await inicialitzarIdioma(); // Assegurem que les traduccions estan carregades abans de continuar
-    await comprovarEstatCua();
-    setInterval(comprovarEstatCua, 3000);
-});
+    const res = await fetch(`api_activitats.php?accio=${rutaAccio}${idPare}`);
+    const dades = await res.json();
+    
+    if (dades.success) {
+        const llista = dades.ras || dades.activitats || dades.checks || [];
+        
+        if (llista.length === 0) {
+            selectTarget.innerHTML = '<option value="">⚠️ No hi ha elements disponibles</option>';
+            selectTarget.disabled = true;
+            return;
+        }
 
+        let html = `<option value="">-- Selecciona --</option>`;
+        llista.forEach(item => {
+            const id = item.id || item.id_activitat_conceptual || item.id_check;
+            const text = item.CodiModul_RA ? `${item.CodiModul_RA} - ${item.nom_ra}` : (item.nom_activitat || item.titol_check);
+            
+            html += `<option value="${id}">${text}</option>`;
+        });
+        
+        selectTarget.innerHTML = html;
+        selectTarget.disabled = false;
+    }
+}
+
+/**
+ * Neteja i bloca un selector inferior de la línia temporal si es reseteja el pare
+ */
+function resetearSelectorAlumne(elementId, text) {
+    const el = document.getElementById(elementId);
+    if (el) {
+        el.innerHTML = `<option value="">${text}</option>`;
+        el.disabled = true;
+    }
+}
+
+/**
+ * Intercepta el formulari de sol·licitud i envia l'alumne a la cua amb el seu check triat
+ */
+async function enviarSollicitudTorn(e) {
+    e.preventDefault();
+    
+    const idCheck = document.getElementById("alum-check").value;
+    if (!idCheck) { 
+        alert("Siusplau, tria el criteri concret que vols avaluar."); 
+        return; 
+    }
+
+    // Demanem el torn canalitzant les dades dinàmiques cap a la funció unificada
+    await accionarCua("demanar_turno", { id_check_evaluacio: idCheck });
+}
+
+// ==========================================
+// 🔔 SISTEMA DE NOTIFICACIONS PUSH
+// ==========================================
+
+/**
+ * Dispara una alerta emergent en l'escriptori de l'usuari si l'app es troba en segon pla
+ */
 function llencarNotificacio() {
     if (!jaNotificat && Notification.permission === "granted") {
         new Notification(window.I18n.translate('its_your_turn'), {
             body: window.I18n.translate('notification_body'),
             icon: "https://cdn-icons-png.flaticon.com/512/179/179133.png"
         });
-        jaNotificat = true;
+        jaNotificat = true; // Evitem spam bloquejant el llançador fins al següent torn
     }
 }
-

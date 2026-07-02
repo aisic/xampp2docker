@@ -13,11 +13,19 @@
   "error_server": "Error crític del servidor.",
   "queue_closed": "La cua està tancada pel professor",
   "already_in_queue": "Ja estàs a la cua",
-  "its_your_turn": "¡ÉS EL TEU TORN! Passa al lloc del professor",
   "queue_is_open": "🟢 LA CUA ESTÀ OBERTA (Pots demanar torn)",
   "queue_is_closed": "🔴 LA CUA ESTÀ TANCADA PEL PROFESSOR",
   "queue_closed_temporarily": "🔒 Cua tancada temporalment",
-  "notification_body": "El professor et crida per a la revisió.",
-  "invalid_json_error": "Error crític del servidor: La resposta no és un JSON vàlid.",
-  "warning_prefix": "Atenció: "
+  "page_title": "Cua d'Alumnes - El meu Torn",
+  "label_modulo": "Mòdul:",
+  "label_ra": "Resultat d'Aprenentatge (RA):",
+  "label_activitat": "Activitat:",
+  "label_check": "Criteri / Check a avaluar:",
+  "select_modulo_first": "Primer tria un mòdul...",
+  "select_ra_first": "Primer tria un RA...",
+  "select_activity_first": "Primer tria una activitat...",
+  "its_your_turn": "És el teu torn!",
+  "notification_body": "El professor t'està esperant, vés cap a la taula d'avaluació.",
+  "invalid_json_error": "El servidor ha retornat una resposta incorrecta.",
+  "warning_prefix": "⚠️ Atenció: "
 }
